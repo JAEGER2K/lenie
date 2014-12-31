@@ -1,0 +1,182 @@
+#!/usr/bin/luajit
+-- TODO Investigate how code hygene can be improved via Lua-environments
+-- TODO check if user has permission to write file in repo-directory
+
+
+
+--{{{ UTIL FUNCTIONS
+function file_exists(fname)
+	local fd = io.open(fname, 'r')
+	if io.type(fd) ~= nil then
+		fd:close()
+		return true
+	else
+		return false
+	end
+end
+
+function installed(pname)
+	local path = "/usr/bin/" .. pname
+	return file_exists(path)
+end
+
+-- Set up and configure the bare repository to automatically create static HTML files for the
+-- web server upon receiving blog pusts via git push
+function prepare()
+	-- Make sure all programs required to run this script are installed
+	local req_progs = {"markdown", "git", "grep"}
+	for ix,prog in ipairs(req_progs) do
+		if not installed(prog) then
+			print("ERROR: The program "..prog.." is required but can't be found")
+			os.exit()
+		end
+	end
+
+	-- Read runtime config or, if it does not exist, create a template rc.lua
+	--[=[ TODO This should be done in the init routine, if at all
+	local fname = PWD.."/rc.lua"
+	if not file_exists(fname) then
+		local rc = [[
+		color = "#fff"
+		background = "#000"
+		]]
+		local fd = io.open(PWD.."/rc.lua", 'w')
+		if fd then
+			fd:write(rc)
+			fd:close()
+		end
+	end
+	dofile(fname)
+	]=]
+
+	--[[ If no style.css exists, create a template
+	-- TODO re-evaluate
+	local fname = PWD.."/style.css"
+	if not file_exists(fname) then
+		local fd = io.open(fname, 'w')
+		local css = "body{color: #fff; background: #000; padding: 50px 20% 50px 20%}"
+		fd:write(css)
+		fd:close()
+	end
+	]]
+end
+
+--[[ Currently not needed
+function get_revision()
+	return io.popen("git log -1 | grep commit")
+end
+
+function out_of_date()
+-- TODO(broken) PWD does not exist
+	local fd = io.open(PWD.."/rev", 'r')
+	if fd then
+		local checked_out = fd:read("*l")
+		fd:close()
+		if get_revision() == checked_out then return false end
+	end
+	return true
+end
+--]]
+--}}}
+
+
+--{{{ MAIN FUNCTIONS
+-- Read all files in the specified source directory "src" and generate HTML code to be stored in
+-- destination directory "dst"
+function generate(src, dst)
+	-- Create table with files that need to be generated, sorted by date of modification
+	local mdfiles = {}
+	for fname in io.popen('ls -t "' .. src .. '"'):lines() do
+		local mdfile = fname:match('^.+%.md$')
+		if mdfile then
+			mdfiles[#mdfiles+1] = mdfile
+		end
+	end
+
+	-- Create HTML header and footer
+	local html_head = [[
+	<html>
+	<link href="style.css" rel="stylesheet">
+	<body>
+	]]
+	local html_foot = [[
+	</body>
+	</html>
+	]]
+
+	-- Convert markdown files to HTML and store each one as string in an array "posts"
+	local posts = {}
+	for ix,fname in ipairs(mdfiles) do
+		-- TODO Extract info about file creation- and modification-date from git index
+		local fd = io.popen("markdown --html4tags " .. src .. "/" .. fname)
+		posts[ix] = fd:read('*a')
+		fd:close()
+	end
+
+	-- concatenate HTML header, parsed markdown-body and HTML footer
+	local separator = "\n<br /><hr><br />\n"
+	local html_body = table.concat(posts, separator)
+	local index_html = html_head .. html_body .. html_foot
+
+	-- Write to file
+	if file_exists(dst .. "/index.html") then print("NOTE: Overwriting index.html in "..dst) end
+	local fd = io.open(dst .. "/index.html", 'w')
+	fd:write(index_html)
+	fd:close()
+
+	--[[ TODO(git) Update rev-file
+	do
+	local fd = io.open(src.."/rev", 'w+')
+	fd:write( get_revision() )
+	fd:close()
+	end	--]]
+end
+
+
+-- Initialize the git repository for the server and configure it.
+function init( repo_path, www_path )
+	-- TODO create directory repo_path, repo_path/src
+	-- TODO create bare repository in repo_path/git
+	-- TODO add post-receive hook
+	local hints = {
+		[[Don't forget to add the SSH keys of everyone who should be able to push to this blog
+		to '$HOME/.ssh/authorized_keys'. See man ssh for details.]],
+		[[Make sure the permissions of the directory where the HTML pages should be written are
+		set properly. The user calling "lenie generate" must have permission to write there and
+		the webserver must have permission to read the files there.]],
+	}
+	print("Setup completed. The blog repository has been created at " .. repo_path ..
+	" and has been configured to save all generated HTML files to " .. www_path)
+	for ix,str in ipairs( hints ) do
+		print("Hint " .. ix .. ": " .. str)
+	end
+end
+--}}}
+
+
+-- Parse input arguments
+if arg[1] == "generate" then
+	SRCDIR, DSTDIR = arg[2], arg[3]
+	if SRCDIR == nil or DSTDIR == nil then
+		print("ERROR: Arguments missing.")
+		os.exit()
+	end
+	prepare()
+	generate(SRCDIR, DSTDIR)
+elseif arg[1] == "init" then
+	local repo_path, www_path = arg[2], arg[3]
+	if not repo_path or not www_path then
+		print("ERROR: Arguments missing.")
+		os.exit()
+	end
+	print("Sorry, this feature is not yet fully implemented")
+else
+	local usage = {
+		[[lenie init <path of repo> <path to www dir observed by webserver>]],
+		[[lenie generate <path to src dir> <path to dest dir>]],
+	}
+	for ix,str in ipairs(usage) do
+		print("usage ["..ix.."]: " .. str)
+	end
+	os.exit()
+end
