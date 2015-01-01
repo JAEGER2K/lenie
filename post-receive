@@ -8,9 +8,7 @@
 
 # 1. Check out all the source files (markdown files etc) from this bare repo
 # into the src directory
-echo "PWD is $PWD and GIT_DIR is $GIT_DIR"
 SRCDIR="${GIT_DIR}/../src"
-echo "SRCDIR is at $SRCDIR"
 GIT_WORK_TREE="$SRCDIR" git checkout -f
 
 # 2. Run lenie on the src directory and let her write the generated HTML and CSS
