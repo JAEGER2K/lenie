@@ -19,6 +19,16 @@ function installed(pname)
 	return file_exists(path)
 end
 
+function print_usage()
+	local usage = {
+		[[lenie init <path of repo> <path to www dir observed by webserver>]],
+		[[lenie generate <path to src dir> <path to dest dir>]],
+	}
+	for ix,str in ipairs(usage) do
+		print("usage ["..ix.."]: " .. str)
+	end
+end
+
 -- Get sha1 of most recent commit from the blogs git repository
 function get_revision()
 	return io.popen("git log -1 | grep commit | awk '{ print $2 }'")
@@ -167,6 +177,7 @@ if arg[1] == "generate" then
 	SRCDIR, DSTDIR = arg[2], arg[3]
 	if SRCDIR == nil or DSTDIR == nil then
 		print("ERROR: Arguments missing.")
+		print_usage()
 		os.exit()
 	end
 	prepare()
@@ -176,16 +187,11 @@ elseif arg[1] == "init" then
 	local repo_path, www_path = arg[2], arg[3]
 	if not repo_path or not www_path then
 		print("ERROR: Arguments missing.")
+		print_usage()
 		os.exit()
 	end
 	print("Sorry, this feature is not yet fully implemented")
 else
-	local usage = {
-		[[lenie init <path of repo> <path to www dir observed by webserver>]],
-		[[lenie generate <path to src dir> <path to dest dir>]],
-	}
-	for ix,str in ipairs(usage) do
-		print("usage ["..ix.."]: " .. str)
-	end
+	print_usage()
 	os.exit()
 end
