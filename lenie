@@ -1,6 +1,5 @@
 #!/usr/bin/luajit
 -- TODO Investigate how code hygene can be improved via Lua-environments
--- TODO check if user has permission to write file in repo-directory
 
 
 --{{{ UTIL FUNCTIONS
@@ -89,11 +88,10 @@ function prepare()
 	end
 	]]
 end
-
 --}}}
 
 
---{{{ GENERATING STATIC HTML
+--{{{ PATH 1: GENERATING STATIC HTML
 -- Create table with files that need to be generated, sorted by date of modification
 function gather_mdfiles(src)
 	local mdfiles = {}
@@ -161,7 +159,7 @@ end
 --}}}
 
 
---{{{ INITIALIZATION OF NEW BLOG REPO
+--{{{ PATH 2: INITIAL SETUP
 -- Initialize the git repository for the server and configure it.
 function init( repo_path, www_path )
 	-- TODO create directory repo_path, repo_path/src
@@ -183,26 +181,28 @@ end
 --}}}
 
 
+--{{{ MAIN
 -- Parse input arguments
-if arg[1] == "generate" then
-	SRCDIR, DSTDIR = arg[2], arg[3]
-	if SRCDIR == nil or DSTDIR == nil then
+if arg[1] == "generate" or arg[1] == "gen" then
+	local srcdir, dstdir = arg[2], arg[3]
+	if srcdir == nil or dstdir == nil then
 		print("ERROR: Arguments missing.")
 		print_usage()
 		os.exit()
 	end
 	prepare()
-	local result = generate(SRCDIR, DSTDIR)
+	local result = generate(srcdir, dstdir)
 	print( result )
-elseif arg[1] == "init" then
+elseif arg[1] == "initialize" or arg[1] == "init" then
 	local repo_path, www_path = arg[2], arg[3]
 	if not repo_path or not www_path then
 		print("ERROR: Arguments missing.")
 		print_usage()
 		os.exit()
 	end
-	print("Sorry, this feature is not yet fully implemented")
+	print("Sorry, this feature has not yet been fully implemented")
 else
 	print_usage()
 	os.exit()
 end
+--}}}
