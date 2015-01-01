@@ -93,13 +93,9 @@ end
 --}}}
 
 
---{{{ MAIN FUNCTIONS
--- Read all files in the specified source directory "src" and generate HTML code to be stored in
--- destination directory "dst"
-function generate(src, dst)
-	if up_to_date(src) then return "Blog already up to date" end
-
-	-- Create table with files that need to be generated, sorted by date of modification
+--{{{ GENERATING STATIC HTML
+-- Create table with files that need to be generated, sorted by date of modification
+function gather_mdfiles(src)
 	local mdfiles = {}
 	for fname in io.popen('ls -t "' .. src .. '"'):lines() do
 		local mdfile = fname:match('^.+%.md$')
@@ -107,7 +103,10 @@ function generate(src, dst)
 			mdfiles[#mdfiles+1] = mdfile
 		end
 	end
+	return mdfiles
+end
 
+function gen_html(src, mdfiles)
 	-- Create HTML header and footer
 	local html_head = [[
 	<html>
@@ -131,7 +130,17 @@ function generate(src, dst)
 	-- concatenate HTML header, parsed markdown-body and HTML footer
 	local separator = "\n<br /><hr><br />\n"
 	local html_body = table.concat(posts, separator)
-	local index_html = html_head .. html_body .. html_foot
+	return html_head .. html_body .. html_foot
+end
+
+-- Read all files in the specified source directory "src" and generate HTML code to be stored in
+-- destination directory "dst"
+function generate(src, dst)
+	if up_to_date(src) then return "Blog already up to date" end
+
+	local mdfiles = gather_mdfiles(src)
+
+	local index_html = gen_html(src, mdfiles)
 
 	-- Write HTML file
 	do
@@ -149,8 +158,10 @@ function generate(src, dst)
 
 	return "Blog updated!"
 end
+--}}}
 
 
+--{{{ INITIALIZATION OF NEW BLOG REPO
 -- Initialize the git repository for the server and configure it.
 function init( repo_path, www_path )
 	-- TODO create directory repo_path, repo_path/src
