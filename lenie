@@ -3,7 +3,6 @@
 -- TODO check if user has permission to write file in repo-directory
 
 
-
 --{{{ UTIL FUNCTIONS
 function file_exists(fname)
 	local fd = io.open(fname, 'r')
@@ -20,11 +19,31 @@ function installed(pname)
 	return file_exists(path)
 end
 
+-- Get sha1 of most recent commit from the blogs git repository
+function get_revision()
+	return io.popen("git log -1 | grep commit | awk '{ print $2 }'")
+end
+
+-- In the src directory there is a file "rev" that stores the sha1 of the commit associated with
+-- the current state of the blog. Note that this is not necessarily the commit that is checked
+-- out in the src directory; it refers to the generated HTML files and indicates whether the
+-- blog - as seen by the web server - is out of sync with the blogs repository.
+-- This function does the comparison and returns true if the blog is in sync with the repo.
+function up_to_date(srcdir)
+	local fd = io.open(srcdir.."/rev", 'r')
+	if fd then
+		local checked_out = fd:read("*l")
+		fd:close()
+		if get_revision() == checked_out then return true end
+	end
+	return false
+end
+
 -- Set up and configure the bare repository to automatically create static HTML files for the
 -- web server upon receiving blog pusts via git push
 function prepare()
 	-- Make sure all programs required to run this script are installed
-	local req_progs = {"markdown", "git", "grep"}
+	local req_progs = {"markdown", "git", "grep", "awk"}
 	for ix,prog in ipairs(req_progs) do
 		if not installed(prog) then
 			print("ERROR: The program "..prog.." is required but can't be found")
@@ -61,22 +80,6 @@ function prepare()
 	]]
 end
 
---[[ Currently not needed
-function get_revision()
-	return io.popen("git log -1 | grep commit")
-end
-
-function out_of_date()
--- TODO(broken) PWD does not exist
-	local fd = io.open(PWD.."/rev", 'r')
-	if fd then
-		local checked_out = fd:read("*l")
-		fd:close()
-		if get_revision() == checked_out then return false end
-	end
-	return true
-end
---]]
 --}}}
 
 
@@ -84,6 +87,8 @@ end
 -- Read all files in the specified source directory "src" and generate HTML code to be stored in
 -- destination directory "dst"
 function generate(src, dst)
+	if up_to_date(src) then return "Blog already up to date" end
+
 	-- Create table with files that need to be generated, sorted by date of modification
 	local mdfiles = {}
 	for fname in io.popen('ls -t "' .. src .. '"'):lines() do
@@ -118,18 +123,21 @@ function generate(src, dst)
 	local html_body = table.concat(posts, separator)
 	local index_html = html_head .. html_body .. html_foot
 
-	-- Write to file
-	if file_exists(dst .. "/index.html") then print("NOTE: Overwriting index.html in "..dst) end
-	local fd = io.open(dst .. "/index.html", 'w')
-	fd:write(index_html)
-	fd:close()
-
-	--[[ TODO(git) Update rev-file
+	-- Write HTML file
 	do
-	local fd = io.open(src.."/rev", 'w+')
-	fd:write( get_revision() )
-	fd:close()
-	end	--]]
+		local fd = io.open(dst .. "/index.html", 'w')
+		fd:write(index_html)
+		fd:close()
+	end
+
+	-- Update rev file to most recent commit hash
+	do
+		local fd = io.open(src.."/rev", 'w+')
+		fd:write( get_revision() )
+		fd:close()
+	end
+
+	return "Blog updated!"
 end
 
 
@@ -162,7 +170,8 @@ if arg[1] == "generate" then
 		os.exit()
 	end
 	prepare()
-	generate(SRCDIR, DSTDIR)
+	local result = generate(SRCDIR, DSTDIR)
+	print( result )
 elseif arg[1] == "init" then
 	local repo_path, www_path = arg[2], arg[3]
 	if not repo_path or not www_path then
