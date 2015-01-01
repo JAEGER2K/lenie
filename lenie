@@ -20,7 +20,10 @@ end
 
 -- Get sha1 of most recent commit from the blogs git repository
 function get_revision()
-	return io.popen("git log -1 | grep commit | awk '{ print $2 }'")
+	local fd = io.popen("git log -1 | grep commit | awk '{ print $2 }'")
+	local rev = fd:read("*a")
+	fd:close()
+	return rev
 end
 
 -- In the src directory there is a file "rev" that stores the sha1 of the commit associated with
