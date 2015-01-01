@@ -2,6 +2,10 @@
 -- TODO Investigate how code hygene can be improved via Lua-environments
 
 
+-- TODO These globals should be sourced from the runtime config
+verbose = true
+
+
 --{{{ UTIL FUNCTIONS
 function file_exists(fname)
 	local fd = io.open(fname, 'r')
@@ -87,6 +91,7 @@ end
 --{{{ PATH 1: GENERATING STATIC HTML
 -- Create table with files that need to be generated, sorted by date of modification
 function gather_mdfiles(src)
+	if verbose then print("Sourcing markdown files from "..src) end
 	local mdfiles = {}
 	for fname in io.popen('ls -t "' .. src .. '"'):lines() do
 		local mdfile = fname:match('^.+%.md$')
@@ -145,6 +150,7 @@ function generate(src, dst)
 
 	-- Write HTML file
 	do
+		if verbose then print("Writing 1 html file to "..dst) end
 		local fd = io.open(dst .. "/index.html", 'w')
 		fd:write(index_html)
 		fd:close()
