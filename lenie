@@ -1,9 +1,9 @@
 #!/usr/bin/luajit
--- TODO Investigate how code hygene can be improved via Lua-environments
+-- TODO where to put the asserts? Needs consistent solution.
 
-
--- TODO These globals should be sourced from the runtime config
-verbose = true
+--{{{ GLOBALS
+CONF = { initialized = false }
+--}}}
 
 
 --{{{ UTIL FUNCTIONS
@@ -24,6 +24,7 @@ end
 
 -- Get sha1 of most recent commit from the blogs git repository
 function get_revision()
+	-- TODO assert we are in the right directory
 	local fd = io.popen("git log -1 | grep commit | awk '{ print $2 }'")
 	local rev = fd:read("*a")
 	fd:close()
@@ -45,34 +46,46 @@ function up_to_date(srcdir)
 	return false
 end
 
+-- Read the runtime config and return a table with the configuration state. If there is no rc
+-- file, return default values. This function is sandboxed in its own environment for security
+-- reasons and it expects the table for that environment as second argument. The runtime config
+-- will be stored in that table.
+function read_rc(srcdir, rc)
+	local dofile = dofile
+	local print = print
+	local file_exists = file_exists
+	setfenv(1, rc)
+
+	local fname = srcdir.."/rc.lua"
+	if file_exists(fname) then
+		dofile(fname)
+	else
+		print( string.format("WARNING: No rc.lua in %q, using default config", src) )
+		color = "#fff"
+		background = "#000"
+		padding = { top="50px", right="20%", bottom="50px", left="20%" }
+		blog_title = "default blog title"
+		blog_subtitle = "powered by lenie; free of js, php, java, flash"
+	end
+
+	return true		-- completed succesfully
+end
+
 -- Set up and configure the bare repository to automatically create static HTML files for the
 -- web server upon receiving blog pusts via git push
-function prepare()
+function prepare(srcdir)
 	-- Make sure all programs required to run this script are installed
 	local req_progs = {"markdown", "git", "grep", "awk"}
 	for ix,prog in ipairs(req_progs) do
 		if not installed(prog) then
-			print("ERROR: The program "..prog.." is required but can't be found")
+			print(string.format("ERROR: The program %q is required but can't be found", prog))
 			os.exit()
 		end
 	end
 
-	-- Read runtime config or, if it does not exist, create a template rc.lua
-	--[=[ TODO This should be done in the init routine, if at all
-	local fname = PWD.."/rc.lua"
-	if not file_exists(fname) then
-		local rc = [[
-		color = "#fff"
-		background = "#000"
-		]]
-		local fd = io.open(PWD.."/rc.lua", 'w')
-		if fd then
-			fd:write(rc)
-			fd:close()
-		end
-	end
-	dofile(fname)
-	]=]
+	-- Read runtime config from rc.lua, store it in the global table "conf" and set its
+	-- "initialized" flag
+	CONF.initialized = read_rc(srcdir, CONF)
 
 	--[[ If no style.css exists, create a template
 	-- TODO re-evaluate
@@ -84,6 +97,7 @@ function prepare()
 		fd:close()
 	end
 	]]
+	return true
 end
 --}}}
 
@@ -91,7 +105,7 @@ end
 --{{{ PATH 1: GENERATING STATIC HTML
 -- Create table with files that need to be generated, sorted by date of modification
 function gather_mdfiles(src)
-	if verbose then print("Sourcing markdown files from "..src) end
+	if CONF.verbose then print("Sourcing markdown files from "..src) end
 	local mdfiles = {}
 	for fname in io.popen('ls -t "' .. src .. '"'):lines() do
 		local mdfile = fname:match('^.+%.md$')
@@ -102,13 +116,11 @@ function gather_mdfiles(src)
 	return mdfiles
 end
 
--- Read the runtime config and return a table with the configuration state. If there is no rc
--- file, create one with default values and return these.
-function read_rc(src)
-	-- TODO Compiling the rc file should be done in a sandboxed environment in order to keep the global environment clean
-end
+function gen_html(src, mdfiles, rc)
+	assert(rc.initialized, "Runtime config has to be initialized before generating HTML")
+	assert( type(src) == "string", "first argument needs to be a string describing the path to the source directory" )
+	assert( type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings" )
 
-function gen_html(src, mdfiles)
 	-- Create HTML header and footer
 	local html_head = [[
 	<html>
@@ -146,11 +158,11 @@ function generate(src, dst)
 
 	local mdfiles = gather_mdfiles(src)
 
-	local index_html = gen_html(src, mdfiles)
+	local index_html = gen_html(src, mdfiles, CONF)
 
 	-- Write HTML file
 	do
-		if verbose then print("Writing 1 html file to "..dst) end
+		if rc.verbose then print("Writing 1 html file to "..dst) end
 		local fd = io.open(dst .. "/index.html", 'w')
 		fd:write(index_html)
 		fd:close()
@@ -209,9 +221,9 @@ if arg[1] == "generate" or arg[1] == "gen" then
 		print_usage()
 		os.exit()
 	end
-	prepare()
+	assert( prepare(srcdir), "Failure during preparation phase" )
 	local result = generate(srcdir, dstdir)
-	print( result )
+	if CONF.verbose then print( result ) end
 elseif arg[1] == "initialize" or arg[1] == "init" then
 	local repo_path, www_path = arg[2], arg[3]
 	if not repo_path or not www_path then
