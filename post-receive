@@ -14,4 +14,4 @@ GIT_WORK_TREE="$SRCDIR" git checkout -f
 # 2. Run lenie on the src directory and let her write the generated HTML and CSS
 # files to the directory the webserver is reading from.
 
-/usr/local/bin/lenie generate "$SRCDIR" "/srv/www"
+/usr/local/bin/lenie.lua generate "$SRCDIR" "/srv/www"
