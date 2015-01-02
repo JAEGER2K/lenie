@@ -9,7 +9,7 @@ CONF = { initialized = false }
 --{{{ UTIL FUNCTIONS
 -- Replacement for dofile that respects the environment of the caller function rather than
 -- executing in the global environment.
-function import(fname)
+function importfile(fname)
 	local f,e = loadfile(fname)
 	if not f then error(e, 2) end
 	setfenv(f, getfenv(2))
@@ -60,15 +60,15 @@ end
 -- reasons and it expects the table for that environment as second argument. The runtime config
 -- will be stored in that table.
 function read_rc(srcdir, rc)
+	-- Setting up the environment of the sandbox
 	local type, assert, print = type, assert, print
 	local sprintf = string.format
-	local import = import
-	local file_exists = file_exists
+	local file_exists, importfile = file_exists, importfile
 	setfenv(1, rc)
 
 	local fname = srcdir.."/rc.lua"
 	if file_exists(fname) then
-		import(fname)
+		importfile(fname)
 		assert(type(color) == "string")
 		assert(type(background) == "string")
 		assert(type(padding) == "table")
@@ -170,7 +170,6 @@ function gen_css(rc)
 	-- TODO Test if it is necessary to generate the CSS or if the style.css is still up to date
 	local css = {}
 	local col, bg = rc.color, rc.background
-	print("col: " .. col)
 	local pad = string.format("%s %s %s %s", rc.padding.top, rc.padding.right, rc.padding.bottom, rc.padding.left)
 	css[#css+1] = string.format("body {color: %s; background: %s; padding: %s;}", col, bg, pad)
 	col = rc.link_color or col
