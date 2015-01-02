@@ -154,6 +154,8 @@ function gen_html(src, mdfiles, rc)
 	<link href="style.css" rel="stylesheet">
 	<body>
 	]]
+	html[#html+1] = string.format("<h1>%s</h1>", rc.blog_title)
+	html[#html+1] = string.format("<h3>%s</h1>", rc.blog_subtitle)
 	-- Posts
 	local separator = "\n<br /><hr><br />\n"
 	html[#html+1] = table.concat(posts, separator)
