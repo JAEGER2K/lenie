@@ -118,19 +118,8 @@ end
 
 function gen_html(src, mdfiles, rc)
 	assert(rc.initialized, "Runtime config has to be initialized before generating HTML")
-	assert( type(src) == "string", "first argument needs to be a string describing the path to the source directory" )
-	assert( type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings" )
-
-	-- Create HTML header and footer
-	local html_head = [[
-	<html>
-	<link href="style.css" rel="stylesheet">
-	<body>
-	]]
-	local html_foot = [[
-	</body>
-	</html>
-	]]
+	assert(type(src) == "string", "first argument needs to be a string describing the path to the source directory")
+	assert(type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings")
 
 	-- Convert markdown files to HTML and store each one as string in an array "posts"
 	local posts = {}
@@ -141,14 +130,42 @@ function gen_html(src, mdfiles, rc)
 		fd:close()
 	end
 
-	-- concatenate HTML header, parsed markdown-body and HTML footer
+	-- Create HTML based on runtime conf and concatenate it with the previously generated post
+	-- bodies.
+	local html = {}
+	-- Header
+	html[#html+1] = [[
+	<html>
+	<link href="style.css" rel="stylesheet">
+	<body>
+	]]
+	-- Posts
 	local separator = "\n<br /><hr><br />\n"
-	local html_body = table.concat(posts, separator)
-	return html_head .. html_body .. html_foot
+	html[#html+1] = table.concat(posts, separator)
+	-- Footer
+	html[#html+1] = [[
+	</body>
+	</html>
+	]]
+	return table.concat(html, "\n")
 end
 
-function gen_css(src, rc)
-	-- TODO Test if that is even necessary, possibly before entering this function
+function gen_css(rc)
+	assert(rc.initialized, "Runtime config has to be initialized before generating CSS")
+	-- TODO Test if it is necessary to generate the CSS or if the style.css is still up to date
+	local css = {}
+	local col, bg = rc.color, rc.background
+	local pad = string.format("%s %s %s %s", rc.padding.top, rc.padding.right, rc.padding.bottom, rc.padding.left)
+	css[#css+1] = string.format("body {color: %s; background: %s; padding: %s;}", col, bg, pad)
+	col = rc.link_color or col
+	bg = rc.link_background or bg
+	css[#css+1] = string.format("a {color: %s; background: %s;}", col, bg)
+	col = rc.header_color or col
+	bg = rc.header_background or bg
+	css[#css+1] = string.format("h1 {color: %s; background: %s;}", col, bg)
+	css[#css+1] = string.format("h2 {color: %s; background: %s;}", col, bg)
+	css[#css+1] = string.format("h3 {color: %s; background: %s;}", col, bg)
+	return table.concat(css, "\n")
 end
 
 -- Read all files in the specified source directory "src" and generate HTML code to be stored in
@@ -157,7 +174,6 @@ function generate(src, dst)
 	if up_to_date(src) then return "Blog already up to date" end
 
 	local mdfiles = gather_mdfiles(src)
-
 	local index_html = gen_html(src, mdfiles, CONF)
 
 	-- Write HTML file
