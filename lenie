@@ -175,12 +175,23 @@ function generate(src, dst)
 
 	local mdfiles = gather_mdfiles(src)
 	local index_html = gen_html(src, mdfiles, CONF)
+	local style_css = gen_css(CONF)
 
 	-- Write HTML file
 	do
-		if rc.verbose then print("Writing 1 html file to "..dst) end
-		local fd = io.open(dst .. "/index.html", 'w')
+		local fname = dst.."/index.html"
+		if rc.verbose then print(string.format("Writing HTML to %s", fname)) end
+		local fd = io.open(fname, 'w')
 		fd:write(index_html)
+		fd:close()
+	end
+
+	-- Write CSS file
+	do
+		local fname = dst.."/style.css"
+		if rc.verbose then print(string.format("Writing CSS to %s", fname)) end
+		local fd = io.open(fname, 'w')
+		fd:write(style_css)
 		fd:close()
 	end
 
