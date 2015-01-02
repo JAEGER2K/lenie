@@ -61,8 +61,8 @@ function read_rc(srcdir, rc)
 		dofile(fname)
 	else
 		print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
-		color = "#fff"
-		background = "#000"
+		color = "#000"
+		background = "#fff"
 		padding = { top="50px", right="20%", bottom="50px", left="20%" }
 		blog_title = "default blog title"
 		blog_subtitle = "powered by lenie; free of js, php, java, flash"
