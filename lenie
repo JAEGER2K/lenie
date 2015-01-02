@@ -51,8 +51,8 @@ end
 -- reasons and it expects the table for that environment as second argument. The runtime config
 -- will be stored in that table.
 function read_rc(srcdir, rc)
-	local dofile = dofile
-	local print = print
+	local dofile, print = dofile, print
+	local sprintf = string.format
 	local file_exists = file_exists
 	setfenv(1, rc)
 
@@ -60,12 +60,13 @@ function read_rc(srcdir, rc)
 	if file_exists(fname) then
 		dofile(fname)
 	else
-		print( string.format("WARNING: No rc.lua in %q, using default config", src) )
+		print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
 		color = "#fff"
 		background = "#000"
 		padding = { top="50px", right="20%", bottom="50px", left="20%" }
 		blog_title = "default blog title"
 		blog_subtitle = "powered by lenie; free of js, php, java, flash"
+		verbose = true
 	end
 
 	return true		-- completed succesfully
@@ -180,7 +181,7 @@ function generate(src, dst)
 	-- Write HTML file
 	do
 		local fname = dst.."/index.html"
-		if rc.verbose then print(string.format("Writing HTML to %s", fname)) end
+		if CONF.verbose then print(string.format("Writing HTML to %s", fname)) end
 		local fd = io.open(fname, 'w')
 		fd:write(index_html)
 		fd:close()
@@ -189,7 +190,7 @@ function generate(src, dst)
 	-- Write CSS file
 	do
 		local fname = dst.."/style.css"
-		if rc.verbose then print(string.format("Writing CSS to %s", fname)) end
+		if CONF.verbose then print(string.format("Writing CSS to %s", fname)) end
 		local fd = io.open(fname, 'w')
 		fd:write(style_css)
 		fd:close()
