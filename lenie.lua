@@ -1,9 +1,8 @@
 #!/usr/bin/luajit
 -- TODO where to put the asserts? Needs consistent solution.
 
---{{{ GLOBALS
+
 CONF = { initialized = false }
---}}}
 
 
 --{{{ UTIL FUNCTIONS
@@ -155,7 +154,7 @@ function gen_html(src, mdfiles, rc)
 	<body>
 	]]
 	html[#html+1] = string.format("<h1>%s</h1>", rc.blog_title)
-	html[#html+1] = string.format("<h3>%s</h1>", rc.blog_subtitle)
+	html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle)
 	-- Posts
 	local separator = "\n<br /><hr><br />\n"
 	html[#html+1] = table.concat(posts, separator)
@@ -177,10 +176,14 @@ function gen_css(rc)
 	col = rc.link_color or col
 	bg = rc.link_background or bg
 	css[#css+1] = string.format("a {color: %s; background: %s;}", col, bg)
-	col = rc.header_color or col
-	bg = rc.header_background or bg
+	col = rc.h1_color or col
+	bg = rc.h1_background or bg
 	css[#css+1] = string.format("h1 {color: %s; background: %s;}", col, bg)
+	col = rc.h2_color or col
+	bg = rc.h2_background or bg
 	css[#css+1] = string.format("h2 {color: %s; background: %s;}", col, bg)
+	col = rc.h3_color or col
+	bg = rc.h3_background or bg
 	css[#css+1] = string.format("h3 {color: %s; background: %s;}", col, bg)
 	return table.concat(css, "\n")
 end
