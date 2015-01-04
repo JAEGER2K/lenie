@@ -15,6 +15,7 @@ function importfile(fname)
 	return f()
 end
 
+
 function file_exists(fname)
 	local fd = io.open(fname, 'r')
 	if io.type(fd) ~= nil then
@@ -25,10 +26,12 @@ function file_exists(fname)
 	end
 end
 
+
 function installed(pname)
 	local path = "/usr/bin/" .. pname
 	return file_exists(path)
 end
+
 
 -- Get sha1 of most recent commit from the blogs git repository
 function get_revision()
@@ -38,6 +41,7 @@ function get_revision()
 	fd:close()
 	return rev
 end
+
 
 -- In the src directory there is a file "rev" that stores the sha1 of the commit associated with
 -- the current state of the blog. Note that this is not necessarily the commit that is checked
@@ -53,6 +57,7 @@ function up_to_date(srcdir)
 	end
 	return false
 end
+
 
 -- Read the runtime config and return a table with the configuration state. If there is no rc
 -- file, return default values. This function is sandboxed in its own environment for security
@@ -80,6 +85,7 @@ function read_rc(srcdir, rc)
 
 	return true		-- completed succesfully
 end
+
 
 -- Set up and configure the bare repository to automatically create static HTML files for the
 -- web server upon receiving blog pusts via git push
@@ -115,6 +121,7 @@ function gather_mdfiles(src)
 	return mdfiles
 end
 
+
 function gen_html(src, mdfiles, rc)
 	assert(rc.initialized, "Runtime config has to be initialized before generating HTML")
 	assert(type(src) == "string", "first argument needs to be a string describing the path to the source directory")
@@ -123,9 +130,15 @@ function gen_html(src, mdfiles, rc)
 	-- Convert markdown files to HTML and store each one as string in an array "posts"
 	local posts = {}
 	for ix,fname in ipairs(mdfiles) do
-		-- TODO Extract info about file creation- and modification-date from git index
-		local fd = io.popen("markdown --html4tags " .. src .. "/" .. fname)
-		posts[ix] = string.format('<div id="post">%s</div>', fd:read('*a'))
+		local fd = io.popen(string.format('git log -1 -- %q|grep -E "Author|Date"', fname))
+		local author = fd:read('*l')
+		local date = fd:read('*l')
+		posts[#posts+1] = '<div id="postinfo">'
+		posts[#posts+1] = string.format("#%d\tLast modified by %s on %s", ix, author, date)
+		posts[#posts+1] = '</div><div id="post">'
+		fd = io.popen(string.format('markdown --html4tags "%s/%s"', src, fname))
+		posts[#posts+1] = fd:read('*a')
+		posts[#posts+1] = "</div><br /><br />"
 		fd:close()
 	end
 
@@ -142,18 +155,19 @@ function gen_html(src, mdfiles, rc)
 	if rc.blog_subtitle then html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle) end
 	html[#html+1] = '</div>'
 	-- Posts
-	local separator = "\n<br /><hr><br />\n"
-	html[#html+1] = table.concat(posts, separator)
+	html[#html+1] = table.concat(posts)
 	-- Footer
 	html[#html+1] = "</body></html>"
 	return table.concat(html, "\n")
 end
 
+
 function gen_css(rc)
 	assert(rc.initialized, "Runtime config has to be initialized before generating CSS")
 	local css = {}
 	local col,bg,pad = assert(rc.fg_color), assert(rc.bg_color), assert(rc.padding)
-	css[#css+1] = string.format("body {color:%s; background:%s; padding:%s %s %s %s;}", col, bg, pad.top, pad.right, pad.bottom, pad.left)
+	css[#css+1] = string.format("body {color:%s; background-color:%s; padding:%s %s %s %s;}",
+								col, bg, pad.top, pad.right, pad.bottom, pad.left)
 	css[#css+1] = string.format("a {color:%s;}", rc.link_color or col)
 	css[#css+1] = string.format("h1 {color:%s;}", rc.h1_color or col)
 	css[#css+1] = string.format("h2 {color:%s;}", rc.h2_color or col)
@@ -168,9 +182,15 @@ function gen_css(rc)
 	css[#css+1] = "padding: 0 0 0 0;"
 	css[#css+1] = "}"
 
+	css[#css+1] = "#postinfo {"
+	css[#css+1] = string.format("color:%s; background-color:%s;", rc.fg_color_alt or col, rc.bg_color_alt or bg)
+	css[#css+1] = "padding:2px 4px 2px 4px;"
+	css[#css+1] = "}"
+
 	css[#css+1] = "\n"
 	return table.concat(css, "\n")
 end
+
 
 -- Read all files in the specified source directory "src" and generate HTML code to be stored in
 -- destination directory "dst"
