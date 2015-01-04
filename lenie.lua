@@ -68,14 +68,10 @@ function read_rc(srcdir, rc)
 	local fname = srcdir.."/rc.lua"
 	if file_exists(fname) then
 		importfile(fname)
-		assert(type(color) == "string")
-		assert(type(background) == "string")
-		assert(type(padding) == "table")
-		assert(type(padding.top) == "string")
 	else
 		print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
-		color = "#000"
-		background = "#fff"
+		fg_color = "#000"
+		bg_color = "#fff"
 		padding = { top="50px", right="20%", bottom="50px", left="20%" }
 		blog_title = "default blog title"
 		blog_subtitle = "powered by lenie; free of js, php, java, flash"
@@ -100,17 +96,6 @@ function prepare(srcdir)
 	-- Read runtime config from rc.lua, store it in the global table "conf" and set its
 	-- "initialized" flag
 	CONF.initialized = read_rc(srcdir, CONF)
-
-	--[[ If no style.css exists, create a template
-	-- TODO re-evaluate
-	local fname = PWD.."/style.css"
-	if not file_exists(fname) then
-		local fd = io.open(fname, 'w')
-		local css = "body{color: #fff; background: #000; padding: 50px 20% 50px 20%}"
-		fd:write(css)
-		fd:close()
-	end
-	]]
 	return true
 end
 --}}}
@@ -140,51 +125,50 @@ function gen_html(src, mdfiles, rc)
 	for ix,fname in ipairs(mdfiles) do
 		-- TODO Extract info about file creation- and modification-date from git index
 		local fd = io.popen("markdown --html4tags " .. src .. "/" .. fname)
-		posts[ix] = fd:read('*a')
+		posts[ix] = string.format('<div id="post">%s</div>', fd:read('*a'))
 		fd:close()
 	end
 
 	-- Create HTML based on runtime conf and concatenate it with the previously generated post
 	-- bodies.
 	local html = {}
+	if not rc.blog_title then rc.blog_title = "a weblog powered by lenie" end
 	-- Header
-	html[#html+1] = [[
-	<html>
-	<link href="style.css" rel="stylesheet">
-	<body>
-	]]
+	html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
+	html[#html+1] = string.format('<head><title>%s</title></head>', rc.blog_title)
+	html[#html+1] = '<body>'
+	html[#html+1] = '<div id="preamble">'
 	html[#html+1] = string.format("<h1>%s</h1>", rc.blog_title)
-	html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle)
+	if rc.blog_subtitle then html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle) end
+	html[#html+1] = '</div>'
 	-- Posts
 	local separator = "\n<br /><hr><br />\n"
 	html[#html+1] = table.concat(posts, separator)
 	-- Footer
-	html[#html+1] = [[
-	</body>
-	</html>
-	]]
+	html[#html+1] = "</body></html>"
 	return table.concat(html, "\n")
 end
 
 function gen_css(rc)
 	assert(rc.initialized, "Runtime config has to be initialized before generating CSS")
-	-- TODO Test if it is necessary to generate the CSS or if the style.css is still up to date
 	local css = {}
-	local col, bg = rc.color, rc.background
-	local pad = string.format("%s %s %s %s", rc.padding.top, rc.padding.right, rc.padding.bottom, rc.padding.left)
-	css[#css+1] = string.format("body {color: %s; background: %s; padding: %s;}", col, bg, pad)
-	col = rc.link_color or col
-	bg = rc.link_background or bg
-	css[#css+1] = string.format("a {color: %s; background: %s;}", col, bg)
-	col = rc.h1_color or col
-	bg = rc.h1_background or bg
-	css[#css+1] = string.format("h1 {color: %s; background: %s;}", col, bg)
-	col = rc.h2_color or col
-	bg = rc.h2_background or bg
-	css[#css+1] = string.format("h2 {color: %s; background: %s;}", col, bg)
-	col = rc.h3_color or col
-	bg = rc.h3_background or bg
-	css[#css+1] = string.format("h3 {color: %s; background: %s;}", col, bg)
+	local col,bg,pad = assert(rc.fg_color), assert(rc.bg_color), assert(rc.padding)
+	css[#css+1] = string.format("body {color:%s; background:%s; padding:%s %s %s %s;}", col, bg, pad.top, pad.right, pad.bottom, pad.left)
+	css[#css+1] = string.format("a {color:%s;}", rc.link_color or col)
+	css[#css+1] = string.format("h1 {color:%s;}", rc.h1_color or col)
+	css[#css+1] = string.format("h2 {color:%s;}", rc.h2_color or col)
+	css[#css+1] = string.format("h3 {color:%s;}", rc.h3_color or col)
+	css[#css+1] = string.format("hr {color:%s;}", rc.bg_color_alt or col)
+
+	css[#css+1] = "#preamble {"
+	css[#css+1] = "padding: 0 0 25px 0;"
+	css[#css+1] = "}"
+
+	css[#css+1] = "#post {"
+	css[#css+1] = "padding: 0 0 0 0;"
+	css[#css+1] = "}"
+
+	css[#css+1] = "\n"
 	return table.concat(css, "\n")
 end
 
