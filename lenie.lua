@@ -131,6 +131,7 @@ function gen_html(src, mdfiles, rc)
 	local posts = {}
 	for ix,fname in ipairs(mdfiles) do
 		local fd = io.popen(string.format('git log -1 -- %q|grep -E "Author|Date"', fname))
+		-- TODO filter out only the relevant parts from author and date
 		local author = fd:read('*l')
 		local date = fd:read('*l')
 		posts[#posts+1] = '<div id="postinfo">'
