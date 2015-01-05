@@ -131,11 +131,11 @@ function gen_html(src, mdfiles, rc)
 	local posts = {}
 	for ix,fname in ipairs(mdfiles) do
 		local fd = io.popen(string.format('git log -1 -- %q|grep -E "Author|Date"', fname))
-		-- TODO filter out only the relevant parts from author and date
-		local author = fd:read('*l')
-		local date = fd:read('*l')
+		local author = string.match( fd:read('*l'), '%a+:%s*([^<]*)' )
+		local date = string.match( fd:read('*l'), '%a+:%s*([^%+]+)' )
+		local title = string.match( fname, '(.+)%.md$' )
 		posts[#posts+1] = '<div id="postinfo">'
-		posts[#posts+1] = string.format("#%d\tLast modified by %s on %s", ix, author, date)
+		posts[#posts+1] = string.format('#%d <a href="index.html">%s</a> by %s <span id="secondary">on %s</span>', ix, title, author, date)
 		posts[#posts+1] = '</div><div id="post">'
 		fd = io.popen(string.format('markdown --html4tags "%s/%s"', src, fname))
 		posts[#posts+1] = fd:read('*a')
@@ -175,18 +175,16 @@ function gen_css(rc)
 	css[#css+1] = string.format("h3 {color:%s;}", rc.h3_color or col)
 	css[#css+1] = string.format("hr {color:%s;}", rc.bg_color_alt or col)
 
-	css[#css+1] = "#preamble {"
-	css[#css+1] = "padding: 0 0 25px 0;"
-	css[#css+1] = "}"
-
-	css[#css+1] = "#post {"
-	css[#css+1] = "padding: 0 0 0 0;"
-	css[#css+1] = "}"
+	css[#css+1] = "#preamble {padding: 0 0 25px 0;}"
+	css[#css+1] = "#post {padding: 0 0 0 0;}"
+	css[#css+1] = string.format('#primary {color:%s;}', rc.fg_color_hi or col)
+	css[#css+1] = string.format('#secondary {color:%s;}', rc.fg_color_sec or col)
 
 	css[#css+1] = "#postinfo {"
-	css[#css+1] = string.format("color:%s; background-color:%s;", rc.fg_color_alt or col, rc.bg_color_alt or bg)
+	css[#css+1] = string.format("color:%s; background-color:%s;", rc.fg_color_hi or col, rc.bg_color_alt or bg)
 	css[#css+1] = "padding:2px 4px 2px 4px;"
 	css[#css+1] = "}"
+
 
 	css[#css+1] = "\n"
 	return table.concat(css, "\n")
