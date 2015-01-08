@@ -124,22 +124,31 @@ end
 
 --{{{ PATH 1: GENERATING STATIC HTML
 -- Create table with files that need to be generated, sorted by date of modification
-function gather_mdfiles(src)
-	-- TODO git log -- <filename> shows commits that affected one file, useful to gather all authors and dates for one file!
-	if CONF.verbose then print("Sourcing markdown files from "..src) end
-	local mdfiles = {}
-	for fname in io.popen('ls -t "' .. src .. '"'):lines() do
-		local mdfile = fname:match('^.+%.md$')
-		if mdfile then
-			mdfiles[#mdfiles+1] = mdfile
-		end
-	end
-	return mdfiles
+function get_metainfo(fname)
+	local fd = io.popen(string.format('git log -1 --pretty="format:%%ct%%n%%ci%%n%%an" -- %q', fname))
+	local info = {}
+	info.t = fd:read('*l'):match('%d+')
+	info.date = fd:read('*l')
+	info.author = fd:read('*l')
+	info.fname = fname
+	info.title = string.match(fname, '(.+)%.md$')
+	return info
 end
 
 
--- TODO(function) get_file_list() to get a list of all files to consider for further processing
--- TODO(function) create table based on file list with infomation (queried from git) about all these files
+function gather_mdfiles(srcdir)
+	if CONF.verbose then print("Sourcing markdown files from "..srcdir) end
+	local mdfiles = {}
+	for fname in io.popen('ls -t "' .. srcdir .. '"'):lines() do
+		local mdfile = fname:match('^.+%.md$')
+		if mdfile then
+			mdfiles[#mdfiles+1] = get_metainfo(mdfile)
+		end
+	end
+	-- Sort mdfiles based on the unix timestamp of the commit in descending order (newest first)
+	table.sort(mdfiles, function(a,b) return a.t > b.t end)
+	return mdfiles
+end
 
 
 function gen_html(src, mdfiles, rc)
@@ -148,7 +157,18 @@ function gen_html(src, mdfiles, rc)
 	assert(type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings")
 
 	-- Convert markdown files to HTML and store each one as string in an array "posts"
-	local posts = {}
+	local t = {}
+	for ix,post in ipairs(mdfiles) do
+		t[#t+1] = '<div id="postinfo">'
+		t[#t+1] = string.format(
+			'#%d <a href="index.html">%s</a> by %s <span id="secondary">on %s</span>',
+			ix, post.title, post.author, post.date
+			)
+		t[#t+1] = '</div><div id="post">'
+		t[#t+1] = io.popen(string.format('markdown --html4tags "%s/%s"', src, post.fname)):read('*a')
+		t[#t+1] = "</div><br /><br />"
+	end
+	--[[
 	for ix,fname in ipairs(mdfiles) do
 		local fd = io.popen(string.format('git log -1 -- %q|grep -E "Author|Date"', fname))
 		local author = string.match( fd:read('*l'), '%a+:%s*([^<]*)' )
@@ -162,6 +182,7 @@ function gen_html(src, mdfiles, rc)
 		posts[#posts+1] = "</div><br /><br />"
 		fd:close()
 	end
+	--]]
 
 	-- Create HTML based on runtime conf and concatenate it with the previously generated post
 	-- bodies.
@@ -176,7 +197,8 @@ function gen_html(src, mdfiles, rc)
 	if rc.blog_subtitle then html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle) end
 	html[#html+1] = '</div>'
 	-- Posts
-	html[#html+1] = table.concat(posts)
+	--TODO remove html[#html+1] = table.concat(posts)
+	html[#html+1] = table.concat(t)
 	-- Footer
 	html[#html+1] = "</body></html>"
 	return table.concat(html, "\n")
