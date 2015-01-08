@@ -8,6 +8,7 @@ CONF = {
 	-- runtime execution flags
 	initialized  = false,
 	verbose = true,
+	sorting = "last_modified",
 	-- TODO add entry for PWD directory of git and lenie
 	-- appearance
 	fg_color     = "#657b83",	--> base00 (regular)
@@ -146,7 +147,11 @@ function gather_mdfiles(srcdir)
 		end
 	end
 	-- Sort mdfiles based on the unix timestamp of the commit in descending order (newest first)
-	table.sort(mdfiles, function(a,b) return a.t > b.t end)
+	local sortfunctions = {
+		last_modified = function(a,b) return a.t > b.t end,
+		first_modified = function(a,b) return a.t < b.t end,
+	}
+	table.sort(mdfiles, sortfunctions[CONF.sorting])
 	return mdfiles
 end
 
