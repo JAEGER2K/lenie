@@ -125,10 +125,10 @@ end
 --{{{ PATH 1: GENERATING STATIC HTML
 -- Create table with files that need to be generated, sorted by date of modification
 function get_metainfo(fname)
-	local fd = io.popen(string.format('git log -1 --pretty="format:%%ct%%n%%ci%%n%%an" -- %q', fname))
+	local fd = io.popen(string.format('git log -1 --pretty="format:%%ct%%n%%cD%%n%%an" -- %q', fname))
 	local info = {}
 	info.t = fd:read('*l'):match('%d+')
-	info.date = fd:read('*l')
+	info.date = fd:read('*l'):match('[^%+]+')
 	info.author = fd:read('*l')
 	info.fname = fname
 	info.title = string.match(fname, '(.+)%.md$')
@@ -168,21 +168,6 @@ function gen_html(src, mdfiles, rc)
 		t[#t+1] = io.popen(string.format('markdown --html4tags "%s/%s"', src, post.fname)):read('*a')
 		t[#t+1] = "</div><br /><br />"
 	end
-	--[[
-	for ix,fname in ipairs(mdfiles) do
-		local fd = io.popen(string.format('git log -1 -- %q|grep -E "Author|Date"', fname))
-		local author = string.match( fd:read('*l'), '%a+:%s*([^<]*)' )
-		local date = string.match( fd:read('*l'), '%a+:%s*([^%+]+)' )
-		local title = string.match( fname, '(.+)%.md$' )
-		posts[#posts+1] = '<div id="postinfo">'
-		posts[#posts+1] = string.format('#%d <a href="index.html">%s</a> by %s <span id="secondary">on %s</span>', ix, title, author, date)
-		posts[#posts+1] = '</div><div id="post">'
-		fd = io.popen(string.format('markdown --html4tags "%s/%s"', src, fname))
-		posts[#posts+1] = fd:read('*a')
-		posts[#posts+1] = "</div><br /><br />"
-		fd:close()
-	end
-	--]]
 
 	-- Create HTML based on runtime conf and concatenate it with the previously generated post
 	-- bodies.
@@ -197,7 +182,6 @@ function gen_html(src, mdfiles, rc)
 	if rc.blog_subtitle then html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle) end
 	html[#html+1] = '</div>'
 	-- Posts
-	--TODO remove html[#html+1] = table.concat(posts)
 	html[#html+1] = table.concat(t)
 	-- Footer
 	html[#html+1] = "</body></html>"
