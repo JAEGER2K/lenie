@@ -47,11 +47,8 @@ end
 
 function file_exists(fname)
 	local fd = io.open(fname, 'r')
-	if io.type(fd) ~= nil then
-		fd:close()
-		return true
-	else
-		return false
+	if io.type(fd) ~= nil then fd:close() return true
+	else return false
 	end
 end
 
@@ -92,8 +89,7 @@ end
 -- will be stored in that table.
 function read_rc(srcdir, rc)
 	-- Setting up the environment of the sandbox
-	local type, assert, print = type, assert, print
-	local sprintf = string.format
+	local print, sprintf = print, string.format
 	local file_exists, importfile = file_exists, importfile
 	setfenv(1, rc)
 
