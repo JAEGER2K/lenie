@@ -2,12 +2,41 @@
 -- TODO where to put the asserts? Needs consistent solution.
 
 
-CONF = { initialized = false }
+--{{{ DEFAULT CONFIG
+-- Some sensible default config, color scheme is solarized light
+CONF = {
+	-- runtime execution flags
+	initialized  = false,
+	verbose = true,
+	-- TODO add entry for PWD directory of git and lenie
+	-- appearance
+	fg_color     = "#657b83",	--> base00 (regular)
+	fg_color_hi  = "#586e75",	--> base01 (emphasized)
+	fg_color_sec = "#93a1a1",	--> base1 (secondary)
+	bg_color     = "#fdf6e3",	--> base3
+	bg_color_alt = "#eee8d5",	--> base2
+	link_color   = "#859900",	--> green
+	link_color2  = "#d33682",	--> magenta
+	link_color3  = "#6c71c4",	--> violet
+	h1_color     = "#2aa198",	--> cyan
+	h2_color     = "#2aa198",	--> cyan
+	h3_color     = "#586e75",	--> base01 (emphasized)
+	padding = { top="0px", right="10%", bottom="100px", left="40%" },
+	blog_title = "default blog title",
+	blog_subtitle = "powered by lenie; free of js, php, java, flash",
+}
+--}}}
 
 
 --{{{ UTIL FUNCTIONS
 -- Replacement for dofile that respects the environment of the caller function rather than
--- executing in the global environment.
+-- executing in the global environment. It will read and execute a lua file in the environment
+-- of the parent function.
+-- Here this is used to first set the environment of the function "read_rc()" to the global
+-- table "CONF" and then call importfile() with the path to the rc.lua. importfile() will read
+-- all the variables defined in that rc.lua and store them in the environment of it's parent
+-- function, which has previously been set to the table CONF. This effectively populates or
+-- overwrites entries in CONF with values defined in rc.lua.
 function importfile(fname)
 	local f,e = loadfile(fname)
 	if not f then error(e, 2) end
@@ -28,14 +57,12 @@ end
 
 
 function installed(pname)
-	local path = "/usr/bin/" .. pname
-	return file_exists(path)
+	return file_exists("/usr/bin/"..pname)
 end
 
 
 -- Get sha1 of most recent commit from the blogs git repository
 function get_revision()
-	-- TODO assert we are in the right directory
 	local fd = io.popen("git log -1 | grep commit | awk '{ print $2 }'")
 	local rev = fd:read("*a")
 	fd:close()
@@ -71,16 +98,8 @@ function read_rc(srcdir, rc)
 	setfenv(1, rc)
 
 	local fname = srcdir.."/rc.lua"
-	if file_exists(fname) then
-		importfile(fname)
-	else
-		print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
-		fg_color = "#000"
-		bg_color = "#fff"
-		padding = { top="50px", right="20%", bottom="50px", left="20%" }
-		blog_title = "default blog title"
-		blog_subtitle = "powered by lenie; free of js, php, java, flash"
-		verbose = true
+	if file_exists(fname) then importfile(fname)
+	else print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
 	end
 
 	return true		-- completed succesfully
@@ -110,6 +129,7 @@ end
 --{{{ PATH 1: GENERATING STATIC HTML
 -- Create table with files that need to be generated, sorted by date of modification
 function gather_mdfiles(src)
+	-- TODO git log -- <filename> shows commits that affected one file, useful to gather all authors and dates for one file!
 	if CONF.verbose then print("Sourcing markdown files from "..src) end
 	local mdfiles = {}
 	for fname in io.popen('ls -t "' .. src .. '"'):lines() do
@@ -120,6 +140,10 @@ function gather_mdfiles(src)
 	end
 	return mdfiles
 end
+
+
+-- TODO(function) get_file_list() to get a list of all files to consider for further processing
+-- TODO(function) create table based on file list with infomation (queried from git) about all these files
 
 
 function gen_html(src, mdfiles, rc)
@@ -168,7 +192,7 @@ function gen_css(rc)
 	local css = {}
 	local col,bg,pad = assert(rc.fg_color), assert(rc.bg_color), assert(rc.padding)
 	css[#css+1] = string.format("body {color:%s; background-color:%s; padding:%s %s %s %s;}",
-								col, bg, pad.top, pad.right, pad.bottom, pad.left)
+	col, bg, pad.top, pad.right, pad.bottom, pad.left)
 	css[#css+1] = string.format("a {color:%s;}", rc.link_color or col)
 	css[#css+1] = string.format("h1 {color:%s;}", rc.h1_color or col)
 	css[#css+1] = string.format("h2 {color:%s;}", rc.h2_color or col)
@@ -264,26 +288,31 @@ function print_usage()
 end
 
 -- Parse input arguments
-if arg[1] == "generate" or arg[1] == "gen" then
-	local srcdir, dstdir = arg[2], arg[3]
-	if srcdir == nil or dstdir == nil then
-		print("ERROR: Arguments missing.")
+function main()
+	if arg[1] == "generate" or arg[1] == "gen" then
+		local srcdir, dstdir = arg[2], arg[3]
+		if srcdir == nil or dstdir == nil then
+			print("ERROR: Arguments missing.")
+			print_usage()
+			os.exit()
+		end
+		assert( prepare(srcdir), "Failure during preparation phase" )
+		local result = generate(srcdir, dstdir)
+		if CONF.verbose then print( result ) end
+	elseif arg[1] == "initialize" or arg[1] == "init" then
+		local repo_path, www_path = arg[2], arg[3]
+		if not repo_path or not www_path then
+			print("ERROR: Arguments missing.")
+			print_usage()
+			os.exit()
+		end
+		print("Sorry, this feature has not yet been fully implemented")
+	else
 		print_usage()
 		os.exit()
 	end
-	assert( prepare(srcdir), "Failure during preparation phase" )
-	local result = generate(srcdir, dstdir)
-	if CONF.verbose then print( result ) end
-elseif arg[1] == "initialize" or arg[1] == "init" then
-	local repo_path, www_path = arg[2], arg[3]
-	if not repo_path or not www_path then
-		print("ERROR: Arguments missing.")
-		print_usage()
-		os.exit()
-	end
-	print("Sorry, this feature has not yet been fully implemented")
-else
-	print_usage()
-	os.exit()
 end
 --}}}
+
+
+main()
