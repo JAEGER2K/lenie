@@ -161,36 +161,49 @@ function gen_html(src, mdfiles, rc)
 	assert(type(src) == "string", "first argument needs to be a string describing the path to the source directory")
 	assert(type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings")
 
-	-- Convert markdown files to HTML and store each one as string in an array "posts"
-	local t = {}
+	-- Convert markdown files to HTML and store each one as string in an array
+	local posts, names = {}, {}
 	for ix,post in ipairs(mdfiles) do
+		local t = {}
 		t[#t+1] = '<div id="postinfo">'
 		t[#t+1] = string.format(
-			'#%d <a href="index.html">%s</a> by %s <span id="secondary">on %s</span>',
-			ix, post.title, post.author, post.date
+			'#%d <a href="%s.html">%s</a> by %s <span id="secondary">on %s</span>',
+			ix, post.title, post.title, post.author, post.date
 			)
 		t[#t+1] = '</div><div id="post">'
 		t[#t+1] = io.popen(string.format('markdown --html4tags "%s/%s"', src, post.fname)):read('*a')
 		t[#t+1] = "</div><br /><br />"
+		posts[ix] = table.concat(t)
+		names[ix] = post.title
 	end
 
-	-- Create HTML based on runtime conf and concatenate it with the previously generated post
-	-- bodies.
-	local html = {}
-	if not rc.blog_title then rc.blog_title = "a weblog powered by lenie" end
-	-- Header
-	html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
-	html[#html+1] = string.format('<head><title>%s</title></head>', rc.blog_title)
-	html[#html+1] = '<body>'
-	html[#html+1] = '<div id="preamble">'
-	html[#html+1] = string.format("<h1>%s</h1>", rc.blog_title)
-	if rc.blog_subtitle then html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle) end
-	html[#html+1] = '</div>'
-	-- Posts
-	html[#html+1] = table.concat(t)
-	-- Footer
-	html[#html+1] = "</body></html>"
-	return table.concat(html, "\n")
+	-- Additionally, add one entry for the index page, containing several posts
+	posts[#posts+1] = table.concat(posts)
+	names[#names+1] = "index"
+
+	-- Now generate HTML pages with head, boody and footer for each entry in the above table
+	-- Now surround the generated HTML with a proper head, body and footer and store the results
+	-- in a table whose key-value pairs describe the file name (sans suffix) and corresponding
+	-- content for the actualy HTML pages to be written.
+	local pages = {}
+	for i=1,#posts do
+		local html = {}
+		-- Header
+		html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
+		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, names[i])
+		html[#html+1] = '<body>'
+		html[#html+1] = '<div id="preamble">'
+		html[#html+1] = string.format('<h1><a href="index.html">%s</a></h1>', rc.blog_title)
+		html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle)
+		html[#html+1] = '</div>'
+		-- Post
+		html[#html+1] = posts[i]
+		-- Footer
+		html[#html+1] = "</body></html>"
+		pages[names[i]] = table.concat(html)
+	end
+
+	return pages
 end
 
 
@@ -228,16 +241,19 @@ function generate(src, dst)
 	if up_to_date(src) then return "Blog already up to date" end
 
 	local mdfiles = gather_mdfiles(src)
-	local index_html = gen_html(src, mdfiles, CONF)
+	--local index_html = gen_html(src, mdfiles, CONF)
+	local html_pages = gen_html(src, mdfiles, CONF)
 	local style_css = gen_css(CONF)
 
-	-- Write HTML file
-	do
-		local fname = dst.."/index.html"
-		if CONF.verbose then print(string.format("Writing HTML to %s", fname)) end
-		local fd = io.open(fname, 'w')
-		fd:write(index_html)
-		fd:close()
+	-- Write HTML files
+	for fname,page in pairs(html_pages) do
+		local path = string.format("%s/%s.html", dst, fname)
+		local fd = io.open(path, 'w')
+		if fd then
+			if CONF.verbose then print(string.format("Writing HTML to %s", path)) end
+			fd:write(page)
+			fd:close()
+		end
 	end
 
 	-- Write CSS file
@@ -245,8 +261,10 @@ function generate(src, dst)
 		local fname = dst.."/style.css"
 		if CONF.verbose then print(string.format("Writing CSS to %s", fname)) end
 		local fd = io.open(fname, 'w')
-		fd:write(style_css)
-		fd:close()
+		if fd then
+			fd:write(style_css)
+			fd:close()
+		end
 	end
 
 	-- Update rev file to most recent commit hash
