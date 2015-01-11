@@ -9,6 +9,7 @@ CONF = {
 	initialized  = false,
 	verbose = true,
 	sorting = "last_modified",
+	max_posts_on_index = 10,
 	-- TODO add entry for PWD directory of git and lenie
 	-- appearance
 	fg_color     = "#657b83",	--> base00 (regular)
@@ -172,14 +173,18 @@ function gen_html(src, mdfiles, rc)
 			)
 		t[#t+1] = '</div><div id="post">'
 		t[#t+1] = io.popen(string.format('markdown --html4tags "%s/%s"', src, post.fname)):read('*a')
-		t[#t+1] = "</div><br /><br />"
 		posts[ix] = table.concat(t)
 		names[ix] = post.title
 	end
 
-	-- Additionally, add one entry for the index page, containing several posts
-	posts[#posts+1] = table.concat(posts)
-	names[#names+1] = "index"
+	-- Additionally, add one entry for the index page, containing as many posts as specified in
+	-- the configuration for "max_posts_on_index"
+	do
+		local j = rc.max_posts_on_index
+		if j < 0 then j = #posts end
+		posts[#posts+1] = table.concat(posts, "</div><br /><br />", 1, j)
+		names[#names+1] = "index"
+	end
 
 	-- Now generate HTML pages with head, boody and footer for each entry in the above table
 	-- Now surround the generated HTML with a proper head, body and footer and store the results
