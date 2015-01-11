@@ -177,12 +177,23 @@ function gen_html(src, mdfiles, rc)
 		names[ix] = post.title
 	end
 
+	-- Additionally, add an entry for a page with a listing of all posts and links to them. This
+	-- includes posts that are contained on index.html and those that are not.
+	do
+		local listing = {}
+		for ix,name in ipairs(names) do
+			listing[#listing+1] = string.format('#%d\t<a href="%s.html">%s</a>', ix, name, name)
+		end
+		posts[#posts+1] = table.concat(listing, "<br />\n")
+		names[#names+1] = "listing"
+	end
+
 	-- Additionally, add one entry for the index page, containing as many posts as specified in
 	-- the configuration for "max_posts_on_index". A setting of 0 is valid and negative values
 	-- disable the limit
 	do
-		local j = rc.max_posts_on_index
-		if j < 0 or j > #posts then j = #posts end
+		local i = rc.max_posts_on_index		-- nr of posts included on index.html
+		if i < 0 or i > #posts then i = #posts end
 		posts[#posts+1] = table.concat(posts, "</div><br /><br />", 1, j)
 		names[#names+1] = "index"
 	end
