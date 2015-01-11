@@ -178,10 +178,11 @@ function gen_html(src, mdfiles, rc)
 	end
 
 	-- Additionally, add one entry for the index page, containing as many posts as specified in
-	-- the configuration for "max_posts_on_index"
+	-- the configuration for "max_posts_on_index". A setting of 0 is valid and negative values
+	-- disable the limit
 	do
 		local j = rc.max_posts_on_index
-		if j < 0 then j = #posts end
+		if j < 0 or j > #posts then j = #posts end
 		posts[#posts+1] = table.concat(posts, "</div><br /><br />", 1, j)
 		names[#names+1] = "index"
 	end
