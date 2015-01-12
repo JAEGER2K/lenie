@@ -226,7 +226,10 @@ function gen_html(src, mdfiles, rc)
 		-- Post
 		html[#html+1] = posts[i]
 		-- Footer
-		html[#html+1] = "</body></html>"
+		if names[i] ~= "listing" then
+			html[#html+1] = '<div align="center"><a href="listing.html">View all posts</a>'
+		end
+		html[#html+1] = '</div></body></html>'
 		pages[names[i]] = table.concat(html)
 	end
 
