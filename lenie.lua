@@ -127,13 +127,20 @@ end
 --{{{ PATH 1: GENERATING STATIC HTML
 -- Create table with files that need to be generated, sorted by date of modification
 function get_metainfo(fname)
-	local fd = io.popen(string.format('git log -1 --pretty="format:%%ct%%n%%cD%%n%%an" -- %q', fname))
 	local info = {}
-	info.t = fd:read('*l'):match('%d+')
+	-- Query the git repository for information on the first version of this file
+	local fd = io.popen(string.format('git log --pretty="format:%%ct%%n%%cD%%n%%an" -- %q|tail -3', fname))
+	info.T = fd:read('*l'):match('%d+')
 	info.date = fd:read('*l'):match('[^%+]+')
 	info.author = fd:read('*l')
+	-- Query the git repository for information on the newest version of this file
+	fd = io.popen(string.format('git log -1 --pretty="format:%%ct%%n%%cD%%n%%an" -- %q', fname))
+	info.t = fd:read('*l'):match('%d+')
+	info.update = fd:read('*l'):match('[^%+]+')
+	info.editor = fd:read('*l')
 	info.fname = fname
 	info.title = string.match(fname, '(.+)%.md$')
+	fd:close()
 	return info
 end
 
@@ -151,6 +158,8 @@ function gather_mdfiles(srcdir)
 	local sortfunctions = {
 		last_modified = function(a,b) return a.t > b.t end,
 		first_modified = function(a,b) return a.t < b.t end,
+		last_published = function(a,b) return a.T > b.T end,
+		first_published = function(a,b) return a.T < b.T end,
 	}
 	table.sort(mdfiles, sortfunctions[CONF.sorting])
 	return mdfiles
@@ -168,14 +177,15 @@ function gen_html(src, mdfiles, rc)
 		local t = {}
 		t[#t+1] = '<div id="postinfo">'
 		t[#t+1] = string.format(
-			'#%d <a href="%s.html">%s</a> by %s <span id="secondary">on %s</span>',
-			ix, post.title, post.title, post.author, post.date
+			'#%d <a href="%s.html">%s</a> by %s <span id="secondary">on %s (updated on %s)</span>',
+			ix, post.title, post.title, post.author, post.date, post.update
 			)
 		t[#t+1] = '</div><div id="post">'
 		t[#t+1] = io.popen(string.format('markdown --html4tags "%s/%s"', src, post.fname)):read('*a')
 		posts[ix] = table.concat(t)
 		names[ix] = post.title
 	end
+	local num_posts = #posts
 
 	-- Additionally, add an entry for a page with a listing of all posts and links to them. This
 	-- includes posts that are contained on index.html and those that are not.
@@ -193,8 +203,8 @@ function gen_html(src, mdfiles, rc)
 	-- disable the limit
 	do
 		local i = rc.max_posts_on_index		-- nr of posts included on index.html
-		if i < 0 or i > #posts then i = #posts end
-		posts[#posts+1] = table.concat(posts, "</div><br /><br />", 1, j)
+		if i < 0 or i > num_posts then i = num_posts end
+		posts[#posts+1] = table.concat(posts, "</div><br /><br />", 1, i)
 		names[#names+1] = "index"
 	end
 
@@ -211,7 +221,7 @@ function gen_html(src, mdfiles, rc)
 		html[#html+1] = '<body>'
 		html[#html+1] = '<div id="preamble">'
 		html[#html+1] = string.format('<h1><a href="index.html">%s</a></h1>', rc.blog_title)
-		html[#html+1] = string.format("<h2>%s</h2>", rc.blog_subtitle)
+		html[#html+1] = string.format("<h3>%s</h3>", rc.blog_subtitle)
 		html[#html+1] = '</div>'
 		-- Post
 		html[#html+1] = posts[i]
@@ -229,7 +239,7 @@ function gen_css(rc)
 	local css = {}
 	local col,bg,pad = assert(rc.fg_color), assert(rc.bg_color), assert(rc.padding)
 	css[#css+1] = string.format("body {color:%s; background-color:%s; padding:%s %s %s %s;}",
-	col, bg, pad.top, pad.right, pad.bottom, pad.left)
+								col, bg, pad.top, pad.right, pad.bottom, pad.left)
 	css[#css+1] = string.format("a {color:%s;}", rc.link_color or col)
 	css[#css+1] = string.format("h1 {color:%s;}", rc.h1_color or col)
 	css[#css+1] = string.format("h2 {color:%s;}", rc.h2_color or col)
@@ -242,7 +252,8 @@ function gen_css(rc)
 	css[#css+1] = string.format('#secondary {color:%s;}', rc.fg_color_sec or col)
 
 	css[#css+1] = "#postinfo {"
-	css[#css+1] = string.format("color:%s; background-color:%s;", rc.fg_color_hi or col, rc.bg_color_alt or bg)
+	css[#css+1] = string.format("color:%s; background-color:%s; font-size:%dpx;",
+								rc.fg_color_hi or col, rc.bg_color_alt or bg, 15)
 	css[#css+1] = "padding:2px 4px 2px 4px;"
 	css[#css+1] = "}"
 
