@@ -176,10 +176,11 @@ function gen_html(src, mdfiles, rc)
 	for ix,post in ipairs(mdfiles) do
 		local t = {}
 		t[#t+1] = '<div id="postinfo">'
-		t[#t+1] = string.format(
-			'#%d <a href="%s.html">%s</a> by %s <span id="secondary">on %s (updated on %s)</span>',
-			ix, post.title, post.title, post.author, post.date, post.update
-			)
+		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', ix, post.title, post.title, post.author)
+		local update = ""
+		if post.t ~= post.T then update = string.format(" (updated %s)", post.update) end
+		local s2 = string.format('<span id="secondary">on %s%s</span>', post.date, update)
+		t[#t+1] = string.format('%s %s', s1, s2)
 		t[#t+1] = '</div><div id="post">'
 		t[#t+1] = io.popen(string.format('markdown --html4tags "%s/%s"', src, post.fname)):read('*a')
 		posts[ix] = table.concat(t)
