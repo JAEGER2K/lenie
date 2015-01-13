@@ -176,7 +176,9 @@ function gen_html(src, mdfiles, rc)
 	for ix,post in ipairs(mdfiles) do
 		local t = {}
 		t[#t+1] = '<div id="postinfo">'
-		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', ix, post.title, post.title, post.author)
+		local nr = ix
+		if string.find(rc.sorting, "last_") then nr = (#mdfiles-ix)+1 end
+		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', nr, post.title, post.title, post.author)
 		local update = ""
 		if post.t ~= post.T then update = string.format(" (updated %s)", post.update) end
 		local s2 = string.format('<span id="secondary">on %s%s</span>', post.date, update)
