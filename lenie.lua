@@ -1,4 +1,4 @@
-#!/usr/bin/luajit
+#!/usr/bin/env luajit
 -- TODO where to put the asserts? Needs consistent solution.
 
 
@@ -150,7 +150,7 @@ function gather_mdfiles(srcdir)
 	local mdfiles = {}
 	for fname in io.popen('ls -t "' .. srcdir .. '"'):lines() do
 		local mdfile = fname:match('^.+%.md$')
-		if mdfile then
+		if mdfile and mdfile ~= "preamble.md" then
 			mdfiles[#mdfiles+1] = get_metainfo(mdfile)
 		end
 	end
@@ -190,6 +190,12 @@ function gen_html(src, mdfiles, rc)
 	end
 	local num_posts = #posts
 
+	-- Generate the HTML for the preamble text, if there is a markdown file for it.
+	local preamble = false
+	if file_exists(src.."/preamble.md") then
+		preamble = io.popen(string.format('markdown --html4tags "%s/preamble.md"', src)):read('*a')
+	end
+
 	-- Additionally, add an entry for a page with a listing of all posts and links to them. This
 	-- includes posts that are contained on index.html and those that are not.
 	do
@@ -223,15 +229,20 @@ function gen_html(src, mdfiles, rc)
 		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, names[i])
 		html[#html+1] = '<body>'
 		html[#html+1] = '<div id="preamble">'
+		--[[
 		html[#html+1] = string.format('<h1><a href="index.html">%s</a></h1>', rc.blog_title)
 		html[#html+1] = string.format("<h3>%s</h3>", rc.blog_subtitle)
-		html[#html+1] = '</div>'
+		--]]
+		html[#html+1] = preamble
+		html[#html+1] = '<hr></div>'
 		-- Post
 		html[#html+1] = posts[i]
 		-- Footer
+		--[[
 		if names[i] ~= "listing" then
 			html[#html+1] = '<div align="center"><a href="listing.html">View all posts</a>'
 		end
+		--]]
 		html[#html+1] = '</div></body></html>'
 		pages[names[i]] = table.concat(html)
 	end
