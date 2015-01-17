@@ -143,7 +143,7 @@ as beta:
 * Automated setup of the server repository via *$ lenie init <blog dir> <web server dir>*, much
 like *$ git init*
 * ~~Configuration of number of posts displayed on the index~~
-* More configuration options for CSS appearance
+* ~~More configuration options for CSS appearance~~
 * ~~Generation of pages dedicated to single posts~~
 * ~~Headers for posts displaying date of publishing, last modification, author~~
 * ~~Ordering posts by configurable criteria~~
