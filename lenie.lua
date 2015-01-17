@@ -312,12 +312,39 @@ end
 --{{{ PATH 2: INITIAL SETUP
 -- Initialize the git repository for the server and configure it.
 function init( repo_path, www_path )
-	-- TODO create directory repo_path, repo_path/src
-	-- TODO create bare repository in repo_path/git
-	-- TODO add post-receive hook
+	-- TODO(beta) check that repo_path and www_path are valid and can be written to
+	-- TODO(alpha) create directory repo_path, repo_path/src
+	-- TODO(alpha) create bare repository in repo_path/git
+	assert( type(repo_path) == "string" )
+	assert( type(www_path) == "string" )
+	assert(os.execute("cd "..www_path) == 0, www_path.." must exist")
+
+	local lenie_path = "/usr/local/bin/lenie.lua"
+	local hooksrc = {}
+	hooksrc[1] = [[ #!/usr/bin/env bash
+	#
+	# This hook is executed by git after receiving data that was pushed to this
+	# repository. $GIT_DIR will point to ?/myblog/git/ where it will find ./HEAD
+	# and ./refs/heads/master. As per the directory structure of lenie the source
+	# files (*.md and rc.lua) are to be checked out to ?/myblog/src/, which is at
+	# ../src/ relative to $GIT_DIR.
+
+	# 1. Check out all the source files (markdown files etc) from this bare repo
+	# into the src directory
+	SRCDIR="${GIT_DIR}/../src"
+	GIT_WORK_TREE="$SRCDIR" git checkout -f
+
+	# 2. Run lenie on the src directory and let her write the generated HTML and CSS
+	# files to the directory the webserver is reading from. ]]
+	hooksrc[2] = string.format('%s generate "$SRCDIR" %q\n', lenie_path, www_path )
+	hooksrc = table.concat(hooksrc, "\n")
+
+	-- TODO(alpha) write post-receive hook to file
+
+
 	local hints = {
 		[[Don't forget to add the SSH keys of everyone who should be able to push to this blog
-		to '$HOME/.ssh/authorized_keys'. See man ssh for details.]],
+		to '$HOME/.ssh/authorized_keys'. See 'man ssh' for details.]],
 		[[Make sure the permissions of the directory where the HTML pages should be written are
 		set properly. The user calling "lenie generate" must have permission to write there and
 		the webserver must have permission to read the files there.]],
@@ -325,7 +352,7 @@ function init( repo_path, www_path )
 	print("Setup completed. The blog repository has been created at " .. repo_path ..
 	" and has been configured to save all generated HTML files to " .. www_path)
 	for ix,str in ipairs( hints ) do
-		print("Hint " .. ix .. ": " .. str)
+		print( string.format("Hint %d: %s", ix, str) )
 	end
 end
 --}}}
