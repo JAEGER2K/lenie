@@ -6,7 +6,6 @@
 -- Some sensible default config, color scheme is solarized light
 CONF = {
 	-- runtime execution flags
-	initialized  = false,
 	verbose = true,
 	sorting = "last_modified",
 	max_posts_on_index = 10,
@@ -98,8 +97,6 @@ function read_rc(srcdir, rc)
 	if file_exists(fname) then importfile(fname)
 	else print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
 	end
-
-	return true		-- completed succesfully
 end
 
 
@@ -111,13 +108,12 @@ function prepare(srcdir)
 	for ix,prog in ipairs(req_progs) do
 		if not installed(prog) then
 			print(string.format("ERROR: The program %q is required but can't be found", prog))
-			os.exit()
+			return false
 		end
 	end
 
-	-- Read runtime config from rc.lua, store it in the global table "conf" and set its
-	-- "initialized" flag
-	CONF.initialized = read_rc(srcdir, CONF)
+	-- Read runtime config from rc.lua, store it in the global table "conf"
+	read_rc(srcdir, CONF)
 	return true
 end
 --}}}
@@ -166,7 +162,6 @@ end
 
 
 function gen_html(src, mdfiles, rc)
-	assert(rc.initialized, "Runtime config has to be initialized before generating HTML")
 	assert(type(src) == "string", "first argument needs to be a string describing the path to the source directory")
 	assert(type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings")
 
@@ -242,32 +237,30 @@ end
 
 
 function gen_css(rc)
-	assert(rc.initialized, "Runtime config has to be initialized before generating CSS")
 	local css = {}
-	local col,bg,pad = assert(rc.fg_color), assert(rc.bg_color), assert(rc.padding)
+	local pad = rc.padding
 	css[#css+1] = string.format("body {color:%s; background-color:%s; padding:%s %s %s %s;}",
-								col, bg, pad.top, pad.right, pad.bottom, pad.left)
-	css[#css+1] = string.format("a:link {color:%s;}", rc.link_color or col)
-	css[#css+1] = string.format("a:hover {color:%s; text-decoration:underline;}", rc.link_color2 or col)
-	css[#css+1] = string.format("a:active {color:%s;}", rc.link_color2 or col)
-	css[#css+1] = string.format("a:visited {color:%s;}", rc.link_color3 or col)
-	css[#css+1] = string.format("h1 {color:%s;}", rc.h1_color or col)
-	css[#css+1] = string.format("h2 {color:%s;}", rc.h2_color or col)
-	css[#css+1] = string.format("h3 {color:%s;}", rc.h3_color or col)
-	css[#css+1] = string.format("hr {color:%s;}", rc.bg_color_alt or col)
+							rc.fg_color, rc.bg_color, pad.top, pad.right, pad.bottom, pad.left)
+	css[#css+1] = string.format("a:link {color:%s;}", rc.link_color)
+	css[#css+1] = string.format("a:hover {color:%s; text-decoration:underline;}", rc.link_color2)
+	css[#css+1] = string.format("a:active {color:%s;}", rc.link_color2)
+	css[#css+1] = string.format("a:visited {color:%s;}", rc.link_color3)
+	css[#css+1] = string.format("h1 {color:%s;}", rc.h1_color)
+	css[#css+1] = string.format("h2 {color:%s;}", rc.h2_color)
+	css[#css+1] = string.format("h3 {color:%s;}", rc.h3_color)
+	css[#css+1] = string.format("hr {color:%s;}", rc.bg_color_alt)
 
 	css[#css+1] = "#preamble {padding: 0 0 25px 0;}"
 	css[#css+1] = "#post {padding: 0 0 0 0;}"
-	css[#css+1] = string.format('#primary {color:%s;}', rc.fg_color_hi or col)
-	css[#css+1] = string.format('#secondary {color:%s;}', rc.fg_color_sec or col)
+	css[#css+1] = string.format('#primary {color:%s;}', rc.fg_color_hi)
+	css[#css+1] = string.format('#secondary {color:%s;}', rc.fg_color_sec)
 
 	css[#css+1] = "#postinfo {"
-	css[#css+1] = string.format("color:%s; background-color:%s; font-size:%dpx;",
-								rc.fg_color_hi or col, rc.bg_color_alt or bg, 15)
-	css[#css+1] = "padding:2px 4px 2px 4px;"
+	css[#css+1] = string.format("\tcolor:%s; background-color:%s; font-size:%dpx;",
+								rc.fg_color_hi, rc.bg_color_alt, 15)
+	css[#css+1] = "\tpadding:2px 4px 2px 4px;"
 	css[#css+1] = "}"
 
-	css[#css+1] = "\n"
 	return table.concat(css, "\n")
 end
 
