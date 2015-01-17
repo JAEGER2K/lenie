@@ -25,7 +25,6 @@ CONF = {
 	h3_color     = "#586e75",	--> base01 (emphasized)
 	padding = { top="0px", right="10%", bottom="100px", left="40%" },
 	blog_title = "default blog title",
-	blog_subtitle = "powered by lenie; free of js, php, java, flash",
 }
 --}}}
 
@@ -229,21 +228,12 @@ function gen_html(src, mdfiles, rc)
 		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, names[i])
 		html[#html+1] = '<body>'
 		html[#html+1] = '<div id="preamble">'
-		--[[
-		html[#html+1] = string.format('<h1><a href="index.html">%s</a></h1>', rc.blog_title)
-		html[#html+1] = string.format("<h3>%s</h3>", rc.blog_subtitle)
-		--]]
 		html[#html+1] = preamble
 		html[#html+1] = '<hr></div>'
 		-- Post
 		html[#html+1] = posts[i]
 		-- Footer
-		--[[
-		if names[i] ~= "listing" then
-			html[#html+1] = '<div align="center"><a href="listing.html">View all posts</a>'
-		end
-		--]]
-		html[#html+1] = '</div></body></html>'
+		html[#html+1] = '</body></html>'
 		pages[names[i]] = table.concat(html)
 	end
 
@@ -273,7 +263,6 @@ function gen_css(rc)
 								rc.fg_color_hi or col, rc.bg_color_alt or bg, 15)
 	css[#css+1] = "padding:2px 4px 2px 4px;"
 	css[#css+1] = "}"
-
 
 	css[#css+1] = "\n"
 	return table.concat(css, "\n")
