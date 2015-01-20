@@ -353,10 +353,11 @@ function init( repo_path, www_path )
 	hooksrc[2] = string.format('%s generate "$SRCDIR" %q\n', lenie_path, www_path )
 	hooksrc = table.concat(hooksrc, "\n")
 
-	-- TODO(alpha) write post-receive hook to file
 	local hook_path = string.format("%s/git/hooks/post-receive", repo_path)
-	-- TODO(alpha) make hook executable
-
+	local fd = io.open(hook_path, 'w+')
+	if fd then fd:write(hooksrc) end		-- write post-receive hook to file
+	fd:close()
+	os.execute("chmod +x " .. hook_path)	-- make hook executable
 
 	local hints = {
 		[[Don't forget to add the SSH keys of everyone who should be able to push to this blog
