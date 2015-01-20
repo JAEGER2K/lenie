@@ -322,14 +322,10 @@ end
 --{{{ PATH 2: INITIAL SETUP
 -- Initialize the git repository for the server and configure it.
 function init( repo_path, www_path )
-	assert( type(repo_path) == "string" )
-	assert( type(www_path) == "string" )
-	-- TODO(alpha) check that repo_path and www_path are valid and can be written to
 	-- repo_path should be the name of the folder that lenie generates and in which the
 	-- subfolders git and src reside
 	-- TODO(alpha) create directory repo_path, repo_path/src
 	-- TODO(alpha) create bare repository in repo_path/git
-	assert(os.execute("cd "..www_path) == 0, www_path.." must exist")
 
 	local lenie_path = "/usr/local/bin/lenie.lua"
 	local hooksrc = {}
@@ -426,7 +422,8 @@ function parse_input()
 		local repo_path, www_dir = arg1, arg2
 		if repo_path and www_dir then
 			assert(access(repo_path) ~= 0, string.format("%s already exists", repo_path))
-			-- TODO assert that the parent dir of repo_dir can be written to
+			local updir = string.match(repo_path, "(.*)/[^/]+")
+			assert(access(updir, "w") == 0, string.format("insufficient permissions in %s", updir))
 			assert(access(www_dir, "w") == 0, "insufficient permissions in www directory")
 			exec_path = "init"
 		else
