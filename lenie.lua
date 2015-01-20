@@ -120,6 +120,7 @@ end
 
 -- Set up and configure the bare repository to automatically create static HTML files for the
 -- web server upon receiving blog pusts via git push
+-- TODO(cleanup) This function can be removed, but it should go along with some re-structuring and planning
 function prepare(srcdir)
 	-- Read runtime config from rc.lua, store it in the global table "conf"
 	read_rc(srcdir, CONF)
@@ -390,10 +391,12 @@ function sanity_checks(repo_dir, www_dir)
 		end
 	end
 	-- Check that the installed Lua interpreter has the correct version
+	local req_luajit = {2,0}
 	local version = io.popen("luajit -v"):read("*l")
 	local major,minor,rev = luainterp:match("(%d)%.(%d)%.(%d)")
-	if major ~= 2 or minor ~= 0 then
-		print("LuaJIT has a version other than 2.0.*")
+	if major ~= req_luajit[1] or minor ~= req_luajit[2] then
+		print(string.format("LuaJIT version missmatch; requires %d.%d.* but found %d.%d.%d\n",
+							req_luajit[1], req_luajit[2], major, minor, rev))
 		return false
 	end
 
