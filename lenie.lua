@@ -278,6 +278,8 @@ end
 -- Read all files in the specified source directory "src" and generate HTML code to be stored in
 -- destination directory "dst"
 function generate(src, dst)
+	assert(access(repo_dir, "w") == 0, "insufficient permissions in repo directory")
+	assert(access(www_dir, "w") == 0, "insufficient permissions in www directory")
 	if up_to_date(src) then return "Blog already up to date" end
 
 	local mdfiles = gather_mdfiles(src)
@@ -322,12 +324,16 @@ end
 --{{{ PATH 2: INITIAL SETUP
 -- Initialize the git repository for the server and configure it.
 function init( repo_path, www_path )
-	-- repo_path should be the name of the folder that lenie generates and in which the
-	-- subfolders git and src reside
-	-- TODO(alpha) create directory repo_path, repo_path/src
+	assert(access(repo_path) ~= 0, string.format("%s already exists", repo_path))
+	local updir = string.match(repo_path, "(.*)/[^/]+")
+	assert(access(updir, "w") == 0, string.format("insufficient permissions in %s", updir))
+	assert(access(www_path, "w") == 0, "insufficient permissions in www directory")
+	-- Create directory repo_path, repo_path/src
+	os.execute("mkdir " .. repo_path)
+	os.execute("mkdir " .. string.format("%s/src", repo_path))
 	-- TODO(alpha) create bare repository in repo_path/git
 
-	local lenie_path = "/usr/local/bin/lenie.lua"
+	local lenie_path = "/usr/local/bin/lenie.lua"	-- TODO(beta) besser solution for this
 	local hooksrc = {}
 	hooksrc[1] = [[ #!/usr/bin/env bash
 	#
@@ -348,6 +354,8 @@ function init( repo_path, www_path )
 	hooksrc = table.concat(hooksrc, "\n")
 
 	-- TODO(alpha) write post-receive hook to file
+	local hook_path = string.format("%s/git/hooks/post-receive", repo_path)
+	-- TODO(alpha) make hook executable
 
 
 	local hints = {
@@ -411,8 +419,6 @@ function parse_input()
 	if exec_path == "generate" or exec_path == "gen" then
 		local repo_dir, www_dir = arg1, arg2
 		if repo_dir and www_dir then
-			assert(access(repo_dir, "w") == 0, "insufficient permissions in repo directory")
-			assert(access(www_dir, "w") == 0, "insufficient permissions in www directory")
 			exec_path = "gen"
 		else
 			print_usage("ERROR: 'lenie gen' requires two paths as arguments.")
@@ -421,10 +427,6 @@ function parse_input()
 	elseif exec_path == "initialize" or exec_path == "init" then
 		local repo_path, www_dir = arg1, arg2
 		if repo_path and www_dir then
-			assert(access(repo_path) ~= 0, string.format("%s already exists", repo_path))
-			local updir = string.match(repo_path, "(.*)/[^/]+")
-			assert(access(updir, "w") == 0, string.format("insufficient permissions in %s", updir))
-			assert(access(www_dir, "w") == 0, "insufficient permissions in www directory")
 			exec_path = "init"
 		else
 			print_usage("ERROR: 'lenie init' requires two paths as arguments.")
@@ -444,7 +446,7 @@ function main()
 	assert( sanity_checks(), "Sanity checks failed" )
 	if input[1] == "init" then
 		--> lenie init
-		print("Sorry, this feature has not yet been fully implemented")
+		print( init(input[2], input[3]) )
 	else
 		--> lenie generate
 		assert( prepare(input[2]), "Failure during preparation phase" )
