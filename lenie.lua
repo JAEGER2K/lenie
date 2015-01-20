@@ -1,6 +1,9 @@
 #!/usr/bin/env luajit
--- TODO where to put the asserts? Needs consistent solution.
 
+local ffi = require("ffi")
+ffi.cdef[[
+int access(const char *pathname, int mode);
+]]
 
 --{{{ DEFAULT CONFIG
 -- Some sensible default config, color scheme is solarized light
@@ -50,6 +53,21 @@ function file_exists(fname)
 	if io.type(fd) ~= nil then fd:close() return true
 	else return false
 	end
+end
+
+
+-- Check file or directory permission using standard C-lib function ACCESS(2) via LuaJITs ffi
+-- library.
+-- TODO(cleanup) replace file_exists with calls to this function?
+function access(fname, mode)
+	assert(fname and type(fname) == "string")
+	if not mode then mode = 0			-- test for existence
+	elseif mode == "r" then mode = 4		-- test for read permission
+	elseif mode == "w" then mode = 2		-- test for write permission
+	elseif mode == "x" then mode = 1		-- test for execute permission
+	end
+
+	return ffi.C.access(fname, mode)
 end
 
 
@@ -103,15 +121,6 @@ end
 -- Set up and configure the bare repository to automatically create static HTML files for the
 -- web server upon receiving blog pusts via git push
 function prepare(srcdir)
-	-- Make sure all programs required to run this script are installed
-	local req_progs = {"markdown", "git", "grep", "awk"}
-	for ix,prog in ipairs(req_progs) do
-		if not installed(prog) then
-			print(string.format("ERROR: The program %q is required but can't be found", prog))
-			return false
-		end
-	end
-
 	-- Read runtime config from rc.lua, store it in the global table "conf"
 	read_rc(srcdir, CONF)
 	return true
@@ -312,11 +321,13 @@ end
 --{{{ PATH 2: INITIAL SETUP
 -- Initialize the git repository for the server and configure it.
 function init( repo_path, www_path )
-	-- TODO(beta) check that repo_path and www_path are valid and can be written to
-	-- TODO(alpha) create directory repo_path, repo_path/src
-	-- TODO(alpha) create bare repository in repo_path/git
 	assert( type(repo_path) == "string" )
 	assert( type(www_path) == "string" )
+	-- TODO(alpha) check that repo_path and www_path are valid and can be written to
+	-- repo_path should be the name of the folder that lenie generates and in which the
+	-- subfolders git and src reside
+	-- TODO(alpha) create directory repo_path, repo_path/src
+	-- TODO(alpha) create bare repository in repo_path/git
 	assert(os.execute("cd "..www_path) == 0, www_path.." must exist")
 
 	local lenie_path = "/usr/local/bin/lenie.lua"
@@ -365,36 +376,83 @@ function print_usage()
 		[[lenie generate <path to src dir> <path to dest dir>]],
 	}
 	for ix,str in ipairs(usage) do
-		print("usage ["..ix.."]: " .. str)
+		print(string.format("usage [%d]: %s", ix, str))
 	end
 end
 
--- Parse input arguments
-function main()
-	if arg[1] == "generate" or arg[1] == "gen" then
-		local srcdir, dstdir = arg[2], arg[3]
-		if srcdir == nil or dstdir == nil then
-			print("ERROR: Arguments missing.")
-			print_usage()
-			os.exit()
+function sanity_checks(repo_dir, www_dir)
+	-- Make sure all programs required to run this script are installed
+	local req_progs = {"markdown", "git", "grep", "awk", "luajit"}
+	for ix,prog in ipairs(req_progs) do
+		if not installed(prog) then
+			print(string.format("ERROR: The program %q is required but can't be found", prog))
+			return false
 		end
+	end
+	-- Check that the installed Lua interpreter has the correct version
+	local version = io.popen("luajit -v"):read("*l")
+	local major,minor,rev = luainterp:match("(%d)%.(%d)%.(%d)")
+	if major ~= 2 or minor ~= 0 then
+		print("LuaJIT has a version other than 2.0.*")
+		return false
+	end
+
+	-- TODO(beta) is repo_dir a valid path and can lenie read and write there?
+	-- Check permissions of repo_dir. This is either the directory with all the mdfiles to be
+	-- read or the directory to be created for the repo. In the latter case we need to check the
+	-- write-permissions of the parent dir and whether or not repo_dir already exists (which it
+	-- shouldn't)
+
+	-- TODO(beta) is www_dir a valid path and can lenie write there?
+	-- Check that www_dir exists and that lenie can write there.
+
+	return true
+end
+
+-- Parse input arguments, briefly check that the number or arguments is correct and then return
+-- them so the caller can examine them more closely.
+function parse_input()
+	local exec_path, arg1, arg2 = arg[1], arg[2], arg[3]
+	if exec_path == "generate" or exec_path == "gen" then
+		local repo_dir, www_dir = arg1, arg2
+		if repo_dir and www_dir then
+			exec_path = "gen"
+		else
+			print("ERROR: 'lenie gen' requires two paths as arguments.")
+			print_usage()
+			return false
+		end
+	elseif exec_path == "initialize" or exec_path == "init" then
+		local repo_path, www_dir = arg1, arg2
+		if repo_path and www_dir then
+			exec_path = "init"
+		else
+			print("ERROR: 'lenie init' requires two paths as arguments.")
+			print_usage()
+			return false
+		end
+	else
+		print_usage()
+		return false
+	end
+
+	return exec_path, arg1, arg2
+end
+
+function main()
+	local exec_path, arg1, arg2 = assert( parse_input(), "Input parsing failed" )
+	assert( sanity_checks(arg1, arg2), "Sanity checks failed" )
+	if exec_path == "init" then
+		--> lenie init
+		print("Sorry, this feature has not yet been fully implemented")
+	else
+		--> lenie generate
 		assert( prepare(srcdir), "Failure during preparation phase" )
 		local result = generate(srcdir, dstdir)
 		if CONF.verbose then print( result ) end
-	elseif arg[1] == "initialize" or arg[1] == "init" then
-		local repo_path, www_path = arg[2], arg[3]
-		if not repo_path or not www_path then
-			print("ERROR: Arguments missing.")
-			print_usage()
-			os.exit()
-		end
-		print("Sorry, this feature has not yet been fully implemented")
-	else
-		print_usage()
-		os.exit()
 	end
 end
---}}}
-
 
 main()
+--}}}
+
