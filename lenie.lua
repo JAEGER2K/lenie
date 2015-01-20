@@ -381,9 +381,11 @@ function sanity_checks()
 		end
 	end
 	-- Check that the installed Lua interpreter has the correct version
-	local req_version = {major="2", minor="0"}
+	local req_version = {major=2, minor=0}
 	local version = io.popen("luajit -v"):read("*l")
 	local major,minor,rev = version:match("(%d)%.(%d)%.(%d)")
+	major, minor, rev = tonumber(major), tonumber(minor), tonumber(rev)
+
 	if major ~= req_version.major or minor ~= req_version.minor then
 		print(string.format("LuaJIT version missmatch; requires %d.%d.* but found %d.%d.%d",
 							req_version.major, req_version.minor, major, minor, rev))
