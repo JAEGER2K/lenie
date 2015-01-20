@@ -57,7 +57,7 @@ end
 
 
 -- Check file or directory permission using standard C-lib function ACCESS(2) via LuaJITs ffi
--- library.
+-- library. Returns 0 when file exists or permission is granted, -1 otherwise.
 -- TODO(cleanup) replace file_exists with calls to this function?
 function access(fname, mode)
 	assert(fname and type(fname) == "string")
@@ -371,17 +371,7 @@ end
 
 
 --{{{ MAIN
-function print_usage()
-	local usage = {
-		[[lenie init <path of repo> <path to www dir observed by webserver>]],
-		[[lenie generate <path to src dir> <path to dest dir>]],
-	}
-	for ix,str in ipairs(usage) do
-		print(string.format("usage [%d]: %s", ix, str))
-	end
-end
-
-function sanity_checks(repo_dir, www_dir)
+function sanity_checks()
 	-- Make sure all programs required to run this script are installed
 	local req_progs = {"markdown", "git", "grep", "awk", "luajit"}
 	for ix,prog in ipairs(req_progs) do
@@ -393,45 +383,52 @@ function sanity_checks(repo_dir, www_dir)
 	-- Check that the installed Lua interpreter has the correct version
 	local req_luajit = {2,0}
 	local version = io.popen("luajit -v"):read("*l")
-	local major,minor,rev = luainterp:match("(%d)%.(%d)%.(%d)")
+	local major,minor,rev = version:match("(%d)%.(%d)%.(%d)")
 	if major ~= req_luajit[1] or minor ~= req_luajit[2] then
 		print(string.format("LuaJIT version missmatch; requires %d.%d.* but found %d.%d.%d\n",
 							req_luajit[1], req_luajit[2], major, minor, rev))
 		return false
 	end
 
-	-- TODO(beta) is repo_dir a valid path and can lenie read and write there?
-	-- Check permissions of repo_dir. This is either the directory with all the mdfiles to be
-	-- read or the directory to be created for the repo. In the latter case we need to check the
-	-- write-permissions of the parent dir and whether or not repo_dir already exists (which it
-	-- shouldn't)
-
-	-- TODO(beta) is www_dir a valid path and can lenie write there?
-	-- Check that www_dir exists and that lenie can write there.
-
 	return true
 end
 
--- Parse input arguments, briefly check that the number or arguments is correct and then return
--- them so the caller can examine them more closely.
+
+function print_usage(msg)
+	if msg then print(msg) end
+	local usage = {
+		[[lenie init <path of repo to be created> <path to write HTML files>]],
+		[[lenie generate <path to src dir of repo> <path to dest dir>]],
+	}
+	for ix,str in ipairs(usage) do
+		print(string.format("usage [%d]: %s", ix, str))
+	end
+end
+
+
+-- Parse input arguments, check that the number or arguments is correct and the permissions of
+-- the specified directories are sufficient.
 function parse_input()
 	local exec_path, arg1, arg2 = arg[1], arg[2], arg[3]
 	if exec_path == "generate" or exec_path == "gen" then
 		local repo_dir, www_dir = arg1, arg2
 		if repo_dir and www_dir then
+			assert(access(repo_dir, "w") == 0, "insufficient permissions in repo directory")
+			assert(access(www_dir, "w") == 0, "insufficient permissions in www directory")
 			exec_path = "gen"
 		else
-			print("ERROR: 'lenie gen' requires two paths as arguments.")
-			print_usage()
+			print_usage("ERROR: 'lenie gen' requires two paths as arguments.")
 			return false
 		end
 	elseif exec_path == "initialize" or exec_path == "init" then
 		local repo_path, www_dir = arg1, arg2
 		if repo_path and www_dir then
+			assert(access(repo_path) ~= 0, string.format("%s already exists", repo_path))
+			-- TODO assert that the parent dir of repo_dir can be written to
+			assert(access(www_dir, "w") == 0, "insufficient permissions in www directory")
 			exec_path = "init"
 		else
-			print("ERROR: 'lenie init' requires two paths as arguments.")
-			print_usage()
+			print_usage("ERROR: 'lenie init' requires two paths as arguments.")
 			return false
 		end
 	else
@@ -442,9 +439,10 @@ function parse_input()
 	return exec_path, arg1, arg2
 end
 
+
 function main()
 	local exec_path, arg1, arg2 = assert( parse_input(), "Input parsing failed" )
-	assert( sanity_checks(arg1, arg2), "Sanity checks failed" )
+	assert( sanity_checks(), "Sanity checks failed" )
 	if exec_path == "init" then
 		--> lenie init
 		print("Sorry, this feature has not yet been fully implemented")
@@ -455,6 +453,7 @@ function main()
 		if CONF.verbose then print( result ) end
 	end
 end
+
 
 main()
 --}}}
