@@ -381,12 +381,12 @@ function sanity_checks()
 		end
 	end
 	-- Check that the installed Lua interpreter has the correct version
-	local req_luajit = {2,0}
+	local req_version = {major="2", minor="0"}
 	local version = io.popen("luajit -v"):read("*l")
 	local major,minor,rev = version:match("(%d)%.(%d)%.(%d)")
-	if major ~= req_luajit[1] or minor ~= req_luajit[2] then
-		print(string.format("LuaJIT version missmatch; requires %d.%d.* but found %d.%d.%d\n",
-							req_luajit[1], req_luajit[2], major, minor, rev))
+	if major ~= req_version.major or minor ~= req_version.minor then
+		print(string.format("LuaJIT version missmatch; requires %d.%d.* but found %d.%d.%d",
+							req_version.major, req_version.minor, major, minor, rev))
 		return false
 	end
 
@@ -436,20 +436,20 @@ function parse_input()
 		return false
 	end
 
-	return exec_path, arg1, arg2
+	return {exec_path, arg1, arg2}
 end
 
 
 function main()
-	local exec_path, arg1, arg2 = assert( parse_input(), "Input parsing failed" )
+	local input = assert( parse_input(), "Input parsing failed" )
 	assert( sanity_checks(), "Sanity checks failed" )
-	if exec_path == "init" then
+	if input[1] == "init" then
 		--> lenie init
 		print("Sorry, this feature has not yet been fully implemented")
 	else
 		--> lenie generate
-		assert( prepare(srcdir), "Failure during preparation phase" )
-		local result = generate(srcdir, dstdir)
+		assert( prepare(input[2]), "Failure during preparation phase" )
+		local result = generate(input[2], input[3])
 		if CONF.verbose then print( result ) end
 	end
 end
