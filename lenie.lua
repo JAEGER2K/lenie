@@ -25,7 +25,7 @@ CONF = {
 	h1_color     = "#2aa198",	--> cyan
 	h2_color     = "#2aa198",	--> cyan
 	h3_color     = "#586e75",	--> base01 (emphasized)
-	padding = { top="0px", right="10%", bottom="100px", left="40%" },
+	padding = { top="20px", right="20%", bottom="40px", left="20%" },
 	blog_title = "default blog title",
 }
 --}}}
@@ -233,7 +233,7 @@ function gen_html(src, mdfiles, rc)
 		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, names[i])
 		html[#html+1] = '<body>'
 		html[#html+1] = '<div id="preamble">'
-		html[#html+1] = preamble
+		html[#html+1] = preamble or "<h1>create preamble.md to replace this default header</h>"
 		html[#html+1] = '<hr></div>'
 		-- Post
 		html[#html+1] = posts[i]
@@ -278,8 +278,8 @@ end
 -- Read all files in the specified source directory "src" and generate HTML code to be stored in
 -- destination directory "dst"
 function generate(src, dst)
-	assert(access(repo_dir, "w") == 0, "insufficient permissions in repo directory")
-	assert(access(www_dir, "w") == 0, "insufficient permissions in www directory")
+	assert(access(src, "w") == 0, "insufficient permissions in repo directory")
+	assert(access(dst, "w") == 0, "insufficient permissions in www directory")
 	if up_to_date(src) then return "Blog already up to date" end
 
 	local mdfiles = gather_mdfiles(src)
@@ -329,47 +329,44 @@ function init( repo_path, www_path )
 	assert(access(updir, "w") == 0, string.format("insufficient permissions in %s", updir))
 	assert(access(www_path, "w") == 0, "insufficient permissions in www directory")
 	-- Create directory repo_path, repo_path/src
-	os.execute("mkdir " .. repo_path)
-	os.execute("mkdir " .. string.format("%s/src", repo_path))
-	-- TODO(alpha) create bare repository in repo_path/git
+	assert( os.execute("mkdir " .. repo_path) == 0 )
+	assert( os.execute("mkdir " .. string.format("%s/src", repo_path)) == 0 )
+	-- Create bare repository in repo_path/git
+	assert( os.execute(string.format("git init --bare --shared %s/git", repo_path)) == 0 )
 
 	local lenie_path = "/usr/local/bin/lenie.lua"	-- TODO(beta) besser solution for this
-	local hooksrc = {}
-	hooksrc[1] = [[ #!/usr/bin/env bash
-	#
-	# This hook is executed by git after receiving data that was pushed to this
-	# repository. $GIT_DIR will point to ?/myblog/git/ where it will find ./HEAD
-	# and ./refs/heads/master. As per the directory structure of lenie the source
-	# files (*.md and rc.lua) are to be checked out to ?/myblog/src/, which is at
-	# ../src/ relative to $GIT_DIR.
-
-	# 1. Check out all the source files (markdown files etc) from this bare repo
-	# into the src directory
-	SRCDIR="${GIT_DIR}/../src"
-	GIT_WORK_TREE="$SRCDIR" git checkout -f
-
-	# 2. Run lenie on the src directory and let her write the generated HTML and CSS
-	# files to the directory the webserver is reading from. ]]
-	hooksrc[2] = string.format('%s generate "$SRCDIR" %q\n', lenie_path, www_path )
-	hooksrc = table.concat(hooksrc, "\n")
+	local h = {}
+	h[#h+1] = "#!/usr/bin/env bash"
+	h[#h+1] = "#"
+	h[#h+1] = "# This hook is executed by git after receiving data that was pushed to this"
+	h[#h+1] = "# repository. $GIT_DIR will point to ?/myblog/git/ where it will find ./HEAD"
+	h[#h+1] = "# and ./refs/heads/master. As per the directory structure of lenie the source"
+	h[#h+1] = "# files (*.md and rc.lua) are to be checked out to ?/myblog/src/, which is at"
+	h[#h+1] = "# ../src/ relative to $GIT_DIR."
+	h[#h+1] = "#"
+	h[#h+1] = "# 1. Check out all the source files (markdown files etc) from this bare repo"
+	h[#h+1] = "# into the src directory"
+	h[#h+1] = 'SRCDIR="${GIT_DIR}/../src"'
+	h[#h+1] = 'GIT_WORK_TREE="$SRCDIR" git checkout -f'
+	h[#h+1] = "#"
+	h[#h+1] = "# 2. Run lenie on the src directory and let her write the generated HTML and CSS"
+	h[#h+1] = "# files to the directory the webserver is reading from."
+	h[#h+1] = string.format('%s generate "$SRCDIR" %q\n', lenie_path, www_path )
+	local hooksrc = table.concat(h, "\n")
 
 	local hook_path = string.format("%s/git/hooks/post-receive", repo_path)
-	local fd = io.open(hook_path, 'w+')
-	if fd then fd:write(hooksrc) end		-- write post-receive hook to file
-	fd:close()
-	os.execute("chmod +x " .. hook_path)	-- make hook executable
+	local fd = assert( io.open(hook_path, 'w+'), string.format("ERROR: Unable to open %s for writing", hook_path))
+	fd:write(hooksrc); fd:close()							-- write post-receive hook to file
+	assert( os.execute("chmod +x " .. hook_path) == 0 )		-- make hook executable
 
 	local hints = {
-		[[Don't forget to add the SSH keys of everyone who should be able to push to this blog
-		to '$HOME/.ssh/authorized_keys'. See 'man ssh' for details.]],
-		[[Make sure the permissions of the directory where the HTML pages should be written are
-		set properly. The user calling "lenie generate" must have permission to write there and
-		the webserver must have permission to read the files there.]],
+		"Don't forget to add the SSH keys of everyone who should be able to push to this blog"
+		.. " to '$HOME/.ssh/authorized_keys'. See 'man ssh' for details.",
 	}
-	print("Setup completed. The blog repository has been created at " .. repo_path ..
-	" and has been configured to save all generated HTML files to " .. www_path)
+	print("\nSetup completed. The blog repository has been created at " .. repo_path ..
+	" and has been configured to save all generated HTML files to " .. www_path .. "\n")
 	for ix,str in ipairs( hints ) do
-		print( string.format("Hint %d: %s", ix, str) )
+		print( string.format("Hint:\n%s", str) )
 	end
 end
 --}}}
