@@ -23,7 +23,7 @@ CONF = {
 	h2_color     = "#2aa198",	--> cyan
 	h3_color     = "#586e75",	--> base01 (emphasized)
 	padding = { top="20px", right="20%", bottom="40px", left="20%" },
-	blog_title = "default blog title",
+	blog_title = "default lenie blog-title",
 }
 --}}}
 
@@ -45,17 +45,8 @@ function importfile(fname)
 end
 
 
-function file_exists(fname)
-	local fd = io.open(fname, 'r')
-	if io.type(fd) ~= nil then fd:close() return true
-	else return false
-	end
-end
-
-
 -- Check file or directory permission using standard C-lib function ACCESS(2) via LuaJITs ffi
 -- library. Returns 0 when file exists or permission is granted, -1 otherwise.
--- TODO(cleanup) replace file_exists with calls to this function?
 function access(fname, mode)
 	assert(fname and type(fname) == "string")
 	if not mode then mode = 0			-- test for existence
@@ -68,9 +59,8 @@ function access(fname, mode)
 end
 
 
-function installed(pname)
-	return file_exists("/usr/bin/"..pname)
-end
+function file_exists(fname) if access(fname) == 0 then return true else return false end end
+function installed(pname) return file_exists("/usr/bin/"..pname) end
 
 
 -- Get sha1 of most recent commit from the blogs git repository
@@ -112,16 +102,6 @@ function read_rc(srcdir, rc)
 	if file_exists(fname) then importfile(fname)
 	else print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
 	end
-end
-
-
--- Set up and configure the bare repository to automatically create static HTML files for the
--- web server upon receiving blog pusts via git push
--- TODO(cleanup) This function can be removed, but it should go along with some re-structuring and planning
-function prepare(srcdir)
-	-- Read runtime config from rc.lua, store it in the global table "conf"
-	read_rc(srcdir, CONF)
-	return true
 end
 --}}}
 
@@ -439,12 +419,12 @@ end
 function main()
 	local input = assert( parse_input(), "Input parsing failed" )
 	assert( sanity_checks(), "Sanity checks failed" )
-	if input[1] == "init" then
-		--> lenie init
+	if input[1] == "init" then				--> lenie init
 		print( init(input[2], input[3]) )
-	else
-		--> lenie generate
-		assert( prepare(input[2]), "Failure during preparation phase" )
+	else									--> lenie generate
+		-- Read runtime config from rc.lua, store it in the global table "CONF"
+		read_rc(input[2], CONF)
+		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
 		if CONF.verbose then print( result ) end
 	end
