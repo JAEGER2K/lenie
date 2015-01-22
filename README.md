@@ -68,6 +68,9 @@ The path to the HTML destination must exist already and you need to have write p
 as well. While it is not necessary for *lenie* to work, you probably also want your webserver
 to read from that very directory. Examples would be */data/www* or */srv/www*.
 
+**NOTE** that you should not point two lenie-blogs to the same www directory as they *will*
+overwrite each others HTML files.
+
 ### On the client side...
 ... you simply clone a git repository from a remote where *lenie* has been set up. If the remote
 is at */home/myuser/myblog* on *myserver.net* to which you have ssh access and you are on your
