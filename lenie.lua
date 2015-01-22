@@ -8,12 +8,9 @@ int access(const char *pathname, int mode);
 --{{{ DEFAULT CONFIG
 -- Some sensible default config, color scheme is solarized light
 CONF = {
-	-- runtime execution flags
 	verbose = true,
 	sorting = "last_modified",
 	max_posts_on_index = 10,
-	-- TODO add entry for PWD directory of git and lenie
-	-- appearance
 	fg_color     = "#657b83",	--> base00 (regular)
 	fg_color_hi  = "#586e75",	--> base01 (emphasized)
 	fg_color_sec = "#93a1a1",	--> base1 (secondary)
