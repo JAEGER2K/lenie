@@ -190,10 +190,10 @@ Optionally but very recommended:
 
 On the server side there needs to be the following additional software installed:
 
-1. The basic suite of unix tools such as grep, awk, etc which is available pretty much
-everywhere from the beginning
+1. The basic suite of unix tools such as ls, grep, awk, etc
 2. A web server of your choice (nginx, lighttpd, apache, etc)
-3. *lenie*
+3. markdown (currently the reference implementation *markdown.pl*)
+4. *lenie*
 
 The user under which git is run on the server needs to have permission to write in the directory
 observed by the web server (eg. /data/www).
@@ -243,4 +243,4 @@ Feature additions for *lenie* after a stable release:
 * *$ lenie init* should provide the option to write the default config to file and add it to the
 new repository
 * A smart concept for signing posts with your GPG-Key
-* Some assembly of stats about the blog, probably on a dedicated page.
+* Some assembly of stats about the blog, probably on a dedicated page
