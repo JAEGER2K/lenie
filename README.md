@@ -50,6 +50,54 @@ A few milliseconds later on the remote end:
 will henceforth be served to visitors of your blog.
 
 
+Simple, secure, revision controlled, tiny memory footprint, unix philosophy...
+---------
+Note that *light weight* is not included. That is not because *lenie* is fat, but because that
+term seems to have become marketing slang with a diffuse meaning and I don't intend to convince
+anyone to use *lenie* despite being the wrong tool for their needs. Thusly I wish to elaborate
+the buzzword extravaganza from the description truthfully.
+
+**Simple** is not the same as **easy**. *lenie* provides an extremely simple workflow for the
+regular tasks of the author of the blog. One that has been refined by programmers for years, but
+can be very useful in non-programming environments as well. Simple means that the idea behind it
+is not complicated and the interaction involves only what is necessary to accomplish the task.
+
+This ties into the **UNIX philosophy**: One program does one thing and does it well. Combining
+multiple such programs allows you to solve vastly different tasks without writing huge programs
+from scratch for everything.
+
+*lenie* out-sources much of the work to git, which stores all the information we could ever want
+in each commit while providing a lot of features useful for blogging. A small list of things git
+gives us for free:
+
+* Securely communicate with the server via SSH when adding content to the blog
+* Sign everything you add to the blog with with your GPG-key
+* Inherent backup of the entire blog (at least one copy on your local HDD and the web server),
+accesible at any time without internet
+* It's revision based, allowing you to roll back the blog to the state of May 4th with one
+command, if you want
+* A comprehensive history of all changes ever done to the blog and, if multiple people are
+authoring it, who authored which change
+* The ability to annotate any edits you make on old posts
+* A lot more things that haven't come to mind yet but will emerge when someone thinks of it,
+possibly without even requiring any additional code from *lenie*
+
+**Secure** doesn't just refer to the encrypted communication via *SSH* but also to the increased
+availability of the data. If the disk of the server crashes the entire content of the blog is
+still in the git repository on your local drive and vice versa if something happens to your
+local drive.
+
+Not just the current state of your blog is backed up that way, thanks to the nature of *git* the
+entire history of your blog, including every edit you ever made, is also backed up in the repo,
+something programmers refer to **revision control**.
+
+Finally, *lenie* is written in Lua and run in LuaJIT, a very performant JIT-compiler for a very
+compact language. *lenie* runs only **once** for every time you push changes to your blog-repo
+and doesn't occupy a single byte of RAM the entire rest of the time. It is not required for
+*lenie* to do any work when the website is requested by a visitor as nothing is generated
+dynamically. I think we can consider **0 bytes in RAM** as a **tiny memory footprint**.
+
+
 Setup
 -----
 ###On the server side...
@@ -96,27 +144,6 @@ The default header of your blog can be replaced by adding a file called *preambl
 repository. It's just another markdown file, like any of your blog posts, but you probably want
 to use it to add a title, subtitle, intro text and/or links to listing.html and index.html. This
 stuff will appear at the top of all pages of your blog.
-
-
-Features?
----------
-*lenie* provides an extremely simple workflow for the author of the blog. One that has been
-refined by programmers for years, but can be very useful in other situations as well. Most of
-the work is outsourced to git, which stores all the information we could ever want with each
-commit and provides us with a lot of features useful for blogging. A small list of things git
-gives us for free:
-
-* Securely communicate with the server via SSH when adding content to the blog
-* Sign everything you add to the blog with with your GPG-key
-* Inherent backup of the entire blog (at least one copy on your local HDD and the web server),
-accesible at any time without internet
-* It's revision based, allowing you to roll back the blog to the state of May 4th with one
-command, if you want
-* A comprehensive history of all changes ever done to the blog and, if multiple people are
-authoring it, who commited the change
-* The ability to annotate any edits you make on old posts
-* A lot more things that haven't come to mind yet but will emerge when someone thinks of it,
-possibly without requiring any additional code from *lenie*
 
 
 Behind the Scenes
