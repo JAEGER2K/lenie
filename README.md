@@ -219,3 +219,24 @@ much like *$ git init*~~
 * ~~Generation of pages dedicated to single posts~~
 * ~~Headers for posts displaying date of publishing, last modification, author~~
 * ~~Ordering posts by configurable criteria~~
+
+And this is a list of planned work during the beta:
+
+* Find, document and eliminate all bugs
+* Efficiency: Currently *lenie* is pretty damn fast but has only been tested with small blogs of
+a limited post-count. In order for that speed to scale for blogs with 1000+ posts *lenie* needs
+to learn to selectively generate only those pages affected by affected the current commit. Once
+that is done *lenies* scalability is determined by *git*, which is proven to scale way beyond
+the amount of text a single person can write in their lifetime.
+* Host an example blog (duh, I already have written the development documentation as blog, it
+only needs to be hosted)
+* Something something test cases
+* Consider replacing the default *markdown* with one of the many alternatives to provide
+additional features for formatting and easy of use (eg. images embedded in the text)
+
+Feature additions for *lenie* after a stable release:
+
+* *$ lenie init* should provide the option to write the default config to file and add it to the
+new repository
+* A smart concept for signing posts with your GPG-Key
+* Some assembly of stats about the blog, probably on a dedicated page.
