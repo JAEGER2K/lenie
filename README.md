@@ -5,6 +5,8 @@ footprint and intimate relationship to the unix philosophy.
 
 *lenie* is named after Lenie Clarke.
 
+**Note**: Skip to the section *Installation* if you don't care for the background and just want
+to get things going.
 
 The Rant (aka motivation)
 --------
@@ -12,8 +14,8 @@ The driving motivation behind the development of *lenie* was my frustration with
 blogging solutions, almost all of which seem to assume that the web browser is a good tool for
 writing longer text (an assumption I disagree with). Additionally, most blogging packages also
 are overly complex for my taste. When I look at all the ref-links and scripts that my browser
-is faced with when trying to load a page from tumblr, blogger, medium or what have you, my
-immediate reaction is to close the tab and try not to think about all the tracking that is going
+is faced with when trying to load a page from tumblr, blogger, medium and so on, my immediate
+reaction is to close the tab and try not to think about all the tracking that is going
 on at the cost of performance; all the security nightmares that lurk in the shadows of the
 gigantic and probaly unmaintainable code bases delivering the data; all the wasted bytes
 transferred unencrypted just to end up infront of closed doors because I am running
@@ -54,7 +56,7 @@ Simple, secure, revision controlled, tiny memory footprint, unix philosophy...
 ---------
 Note that *light weight* is not included. That is not because *lenie* is fat, but because that
 term seems to have become marketing slang with a diffuse meaning and I don't intend to convince
-anyone to use *lenie* despite being the wrong tool for their needs. Thusly I wish to elaborate
+anyone to use *lenie* when it's not the right tool for their needs. Thusly I wish to elaborate
 the buzzword extravaganza from the description truthfully.
 
 **Simple** is not the same as **easy**. *lenie* provides an extremely simple workflow for the
@@ -98,8 +100,8 @@ and doesn't occupy a single byte of RAM the entire rest of the time. It is not r
 dynamically. I think we can consider **0 bytes in RAM** as a **tiny memory footprint**.
 
 
-Setup
------
+Installation
+------------
 ###On the server side...
 ... *lenie* needs to be installed in a folder included in the install path such
 as /usr/bin or /usr/local/bin. You then call
