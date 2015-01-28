@@ -73,9 +73,9 @@ in each commit while providing a lot of features useful for blogging. A small li
 gives us for free:
 
 * Securely communicate with the server via SSH when adding content to the blog
-* Sign everything you add to the blog with with your GPG-key
+* Sign everything you commit to the blog with with your GPG-key
 * Inherent backup of the entire blog (at least one copy on your local HDD and the web server),
-accesible at any time without internet
+accesible at any time, even when offline
 * It's revision based, allowing you to roll back the blog to the state of May 4th with one
 command, if you want
 * A comprehensive history of all changes ever done to the blog and, if multiple people are
@@ -91,13 +91,39 @@ local drive.
 
 Not just the current state of your blog is backed up that way, thanks to the nature of *git* the
 entire history of your blog, including every edit you ever made, is also backed up in the repo,
-something programmers refer to **revision control**.
+something programmers refer to as **revision control**.
 
 Finally, *lenie* is written in Lua and run in LuaJIT, a very performant JIT-compiler for a very
 compact language. *lenie* runs only **once** for every time you push changes to your blog-repo
 and doesn't occupy a single byte of RAM the entire rest of the time. It is not required for
 *lenie* to do any work when the website is requested by a visitor as nothing is generated
 dynamically. I think we can consider **0 bytes in RAM** as a **tiny memory footprint**.
+
+
+Behind the Scenes
+-----------------
+*lenie* itself only needs to be installed on the machine hosting the web server, where she is
+triggered by a githook whenever the blogs git repository receives a commit. The changes are
+checked out into a directory and *lenie* runs through the files, parsing all markdown files and
+consulting the config file before outputting static HTML into the directory observed by the
+web server of your choice.
+
+The choice to generate HTML and CSS code statically is deliberate, as there are no databases
+involved and the blog maintained by *lenie* is as simple a web site as a blog should be in my
+humble opinion. The result is an extremely fast loading site that is restricted only by the
+[capabilities of HTML and CSS](http://www.csszengarden.com/).
+
+The HTML generation is implemented rather naively right now, but will be optimized eventually to
+only generate what is affected by the changes made in the last commit. With the potential to
+cache segments of generated HTML code between updates even lively sites with a long history and
+hundreds of thousands of entries might be updated statically within a few milliseconds.
+
+*lenie* itself is written in Lua 5.1 and runs with the extremely fast JIT-compiler
+[LuaJIT](http://luajit.org/). Lua generally handles string manipulation with grace and LuaJIT
+performs so well that it is frequently used in game programming where execution times of less
+than 16 milliseconds have to be met every frame. So yeah, don't worry about the performance of
+generating the static HTML sites, which only ever happens when you push updates to the blog
+anyway.
 
 
 Installation
@@ -131,7 +157,7 @@ local computer at *~/blogs/*, then the command would be:
     $ git clone myuser@myserver.net:myblog/git mybloglocal
 
 This will create the repository in *~/blogs/mybloglocal* and right now this will be an empty
-repository. You add a markdown text-file, via *git add*, commit that additions to the repository
+repository. You add a markdown text-file, via *git add*, commit that addition to the repository
 via *git commit* and send it to the remote via *git push*.
 
 ### Useful optional things
@@ -140,43 +166,19 @@ First of all, you might want to edit the user name under which your posts are pu
 your local git repository.
 
 Configuration of the blog is done by adding a file called *rc.lua* to your repository. An
-example of this file is distributed with *lenie*s source code.
+example of this file is distributed with *lenie*s source code
+[under /doc/rc.lua](https://github.com/lamarpavel/lenie/blob/master/doc/rc.lua).
 
 The default header of your blog can be replaced by adding a file called *preamble.md* to your
 repository. It's just another markdown file, like any of your blog posts, but you probably want
 to use it to add a title, subtitle, intro text and/or links to listing.html and index.html. This
-stuff will appear at the top of all pages of your blog.
-
-
-Behind the Scenes
------------------
-*lenie* itself only needs to be installed on the machine hosting the web server, where she is
-triggered by a githook whenever the blogs git repository receives a commit. The changes are
-checked out into a directory and *lenie* runs through the files, parsing all markdown files and
-consulting the config file before outputting static HTML into the directory observed by the
-web server of your choice.
-
-The choice to generate HTML and CSS code statically is deliberate, as there are no databases
-involved and the blog maintained by *lenie* is as simple a web site as a blog should be in my
-humble opinion. The result is an extremely fast loading site that is restricted only by the
-[http://www.csszengarden.com/](capabilities of HTML and CSS).
-
-The HTML generation is implemented rather naively right now, but will be optimized eventually to
-only generate what is affected by the changes made in the last commit. With the potential to
-cache segments of generated HTML code between updates even lively sites with a long history and
-hundreds of thousands of entries might be updated statically within a few milliseconds.
-
-*lenie* itself is written in Lua 5.1 and runs with the extremely fast JIT-compiler
-[LuaJIT](http://luajit.org/). Lua generally handles string manipulation with grace and LuaJIT
-performs so well that it is frequently used in game programming where execution times of less
-than 16 milliseconds have to be met every frame. So yeah, don't worry about the performance of
-generating the static HTML sites, which only ever happens when you push updates to the blog
-anyway.
+stuff will appear at the top of all pages of your blog. And example file is distributed with
+*lenie*s source code [under /doc/preamble.md](https://raw.githubusercontent.com/lamarpavel/lenie/master/doc/preamble.md).
 
 
 Detailed setup info
 -------------------
-The basig setup on the client side (where the author writes) requires the following tools:
+The basic setup on the client side (where the author writes) requires the following tools:
 
 1. A text editor
 2. git (either run in a terminal or one of te GUIs out there)
