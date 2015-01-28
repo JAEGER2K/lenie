@@ -32,20 +32,22 @@ All configuration of the blog, as it appears to the readers in their web browser
 entirely in one text file, that you also write/edit in your favourite text editor, locally on
 your computer. That includes everything from colour scheme to the blogs title.
 
-All text files are stored inside a directory (or directory hierarchy, if you want to keep things
-neat and tidy with subdirectories etc) on your hard drive. One folder with everything in it.
-That is all.
+All text files are stored inside a directory on your hard drive. One folder with everything in
+it. The folder is a git repository configured to push to a remote on which *lenie* is running.
 
-Oh and the folder is also a git repository. A git repo configured to push to a remote on a
-machine with a web server.
-
-The workflow looks like this:
+The workflow for writing on the blog looks like this:
 
 1. Write or edit text file in your favourite editor.
 2. $ git commit
 3. $ git push
 
-And that'll be that, a few milliseconds later the changes are visible on your blog.
+A few milliseconds later on the remote end:
+
+1. Upon receiving data a git-hook is triggered that starts *lenie*
+2. *lenie* reads the text files from the git-repository
+3. *lenie* generates static HTML/CSS from your text files, based on your configuration
+4. *lenie* writes the generated HTML/CSS to a directory which is observed by a webserver and
+will henceforth be served to visitors of your blog.
 
 
 Setup
