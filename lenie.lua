@@ -69,7 +69,14 @@ end
 
 
 function file_exists(fname) if access(fname) == 0 then return true else return false end end
-function installed(pname) return file_exists("/usr/bin/"..pname) end
+function installed(pname)
+	local path = os.getenv("PATH")
+	for dir in string.gmatch(path, "[^:]+") do
+		local fpath = string.format("%s/%s", dir, pname)
+		if access(fpath) == 0 then return true end
+	end
+	return false
+end
 
 
 -- Get sha1 of most recent commit from the blogs git repository
