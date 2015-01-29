@@ -73,7 +73,9 @@ function installed(pname)
 	local path = os.getenv("PATH")
 	for dir in string.gmatch(path, "[^:]+") do
 		local fpath = string.format("%s/%s", dir, pname)
-		if access(fpath) == 0 then return true end
+		if access(fpath) == 0 then
+			return true, fpath
+		end
 	end
 	return false
 end
@@ -327,7 +329,8 @@ function init( repo_path, www_path )
 	-- Create bare repository in repo_path/git
 	assert( os.execute(string.format("git init --bare --shared %s/git", repo_path)) == 0 )
 
-	local lenie_path = "/usr/local/bin/lenie.lua"	-- TODO(beta) besser solution for this
+	local lenie_found, lenie_path = installed("lenie.lua")
+	assert( lenie_found, "ERROR: lenie.lua is not installed" )
 	local h = {}
 	h[#h+1] = "#!/usr/bin/env bash"
 	h[#h+1] = "#"
