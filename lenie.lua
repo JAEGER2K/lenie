@@ -24,7 +24,16 @@ CONF = {
 	h3_color     = "#586e75",	--> base01 (emphasized)
 	padding = { top="20px", right="20%", bottom="40px", left="20%" },
 	blog_title = "default lenie blog-title",
+	clean_html = false,
 }
+
+
+--[[ Global state table, all fields are false until initialized.
+STATE = {
+	www_path = false,
+	repo_path = false,
+}
+--]]
 --}}}
 
 
@@ -349,6 +358,25 @@ end
 --}}}
 
 
+--{{{ CLEAN-UP
+function clean_www(repo_dir, www_dir)
+	-- Get a list of all html files in the www_dir, remove the .html-suffix, compare the string
+	-- against a list of special file names to be excluded from the test and then check if a
+	-- corresponding markdown file exists at repo_path. If no such file exists, remove the html
+	-- file with the corresponding name.
+	local special = {index=true, listing=true}
+	local lshtml = io.popen(string.format('ls %q | grep "\\.html$" | sed "s/.html//"', www_dir))
+	for f in lshtml:lines() do
+		if not special[f] and not file_exists(string.format('%s/%s.md', repo_dir, f)) then
+			local rmpath = string.format('%s/%s.html', www_dir, f)
+			os.execute(string.format('rm %q', rmpath))
+			if CONF.verbose then print(string.format('Removed %q', rmpath)) end
+		end
+	end
+end
+--}}}
+
+
 --{{{ MAIN
 function sanity_checks()
 	-- Make sure all programs required to run this script are installed
@@ -427,6 +455,7 @@ function main()
 		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
 		if CONF.verbose then print( result ) end
+		if CONF.clean_html then clean_www(input[2], input[3]) end
 	end
 end
 

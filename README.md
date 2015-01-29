@@ -237,7 +237,7 @@ only needs to be hosted)
 * Something something test cases
 * Consider replacing the default *markdown* with one of the many alternatives to provide
 additional features for formatting and ease of use (eg. images embedded in the text)
-* delete HTML pages that are no longer needed
+* ~~delete HTML pages that are no longer needed~~
 * Find, document and eliminate all bugs
 
 Feature additions for *lenie* after a stable release:
@@ -247,3 +247,5 @@ new repository
 * A smart concept for signing posts with your GPG-Key
 * Some assembly of stats about the blog, probably on a dedicated page
 * Support for directory hierarchies in the blog-repository (recursively scan for markdown files)
+* When removing posts some links from other posts to the removed pages may become invalid,
+think about a solution and whether it makes sense to try to solve this
