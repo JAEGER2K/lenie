@@ -226,7 +226,7 @@ much like *$ git init*~~
 
 And this is a list of planned work during the beta:
 
-* Find, document and eliminate all bugs
+* Add option to use a custom CSS style commited to the repository instead of the generated one
 * Efficiency: Currently *lenie* is pretty damn fast but has only been tested with small blogs of
 a limited post-count. In order for that speed to scale for blogs with 1000+ posts *lenie* needs
 to learn to selectively generate only those pages affected by affected the current commit. Once
@@ -236,7 +236,9 @@ the amount of text a single person can write in their lifetime.
 only needs to be hosted)
 * Something something test cases
 * Consider replacing the default *markdown* with one of the many alternatives to provide
-additional features for formatting and easy of use (eg. images embedded in the text)
+additional features for formatting and ease of use (eg. images embedded in the text)
+* delete HTML pages that are no longer needed
+* Find, document and eliminate all bugs
 
 Feature additions for *lenie* after a stable release:
 
@@ -244,3 +246,4 @@ Feature additions for *lenie* after a stable release:
 new repository
 * A smart concept for signing posts with your GPG-Key
 * Some assembly of stats about the blog, probably on a dedicated page
+* Support for directory hierarchies in the blog-repository (recursively scan for markdown files)
