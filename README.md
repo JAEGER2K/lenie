@@ -151,7 +151,7 @@ overwrite each others HTML files.
 
 ### On the client side...
 
-* 1) You simply clone a git repository from a remote where *lenie* has been set up.
+* **1) You simply clone a git repository from a remote where *lenie* has been set up.**
 
 If the remote is at */home/myuser/myblog* on *myserver.net* to which you have ssh access and you
 are on your local computer at *~/blogs/*, then the command would be:
@@ -160,16 +160,16 @@ are on your local computer at *~/blogs/*, then the command would be:
 
 This will create an empty repository in *~/blogs/mybloglocal*.
 
-* 2) Next, write a post and save it in a file *my\_first\_post.md*.
+* **2) Next, write a post and save it in a file *my\_first\_post.md*.**
 
 The file name defines the title of the blog post and the .md-suffix is required or the file will
 be ignored by *lenie*.
 
-* 3) Add file to git repository
+* **3) Add file to git repository**
 
     $ git add my_first_post.md
 
-* 4) Commit and push
+* **4) Commit and push**
 
     $ git commit -m "wrote my first post"
 	$ git push
