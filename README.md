@@ -150,15 +150,29 @@ to read from that very directory. Examples would be */data/www* or */srv/www*.
 overwrite each others HTML files.
 
 ### On the client side...
-... you simply clone a git repository from a remote where *lenie* has been set up. If the remote
-is at */home/myuser/myblog* on *myserver.net* to which you have ssh access and you are on your
-local computer at *~/blogs/*, then the command would be:
+
+1. you simply clone a git repository from a remote where *lenie* has been set up.
+
+If the remote is at */home/myuser/myblog* on *myserver.net* to which you have ssh access and you
+are on your local computer at *~/blogs/*, then the command would be:
 
     $ git clone myuser@myserver.net:myblog/git mybloglocal
 
-This will create the repository in *~/blogs/mybloglocal* and right now this will be an empty
-repository. You add a markdown text-file, via *git add*, commit that addition to the repository
-via *git commit* and send it to the remote via *git push*.
+This will create an empty repository in *~/blogs/mybloglocal*.
+
+2. Next, write a post and save it in a file *my\_first\_post.md*.
+
+The file name defines the title of the blog post and the .md-suffix is required or the file will
+be ignored by *lenie*.
+
+3. Add file to git repository
+
+    $ git add my_first_post.md
+
+4. Commit and push
+
+    $ git commit -m "wrote my first post"
+	$ git push
 
 ### Useful optional things
 First of all, you might want to edit the user name under which your posts are published by
@@ -194,6 +208,7 @@ On the server side there needs to be the following additional software installed
 2. A web server of your choice (nginx, lighttpd, apache, etc)
 3. markdown (currently the reference implementation *markdown.pl*)
 4. *lenie*
+5. A [properly configured](https://stribika.github.io/2015/01/04/secure-secure-shell.html) SSH server
 
 The user under which git is run on the server needs to have permission to write in the directory
 observed by the web server (eg. /data/www).
@@ -226,7 +241,7 @@ much like *$ git init*~~
 
 And this is a list of planned work during the beta:
 
-* Add option to use a custom CSS style commited to the repository instead of the generated one
+* ~~Add option to use a custom CSS style commited to the repository instead of the generated one~~
 * Efficiency: Currently *lenie* is pretty damn fast but has only been tested with small blogs of
 a limited post-count. In order for that speed to scale for blogs with 1000+ posts *lenie* needs
 to learn to selectively generate only those pages affected by affected the current commit. Once
