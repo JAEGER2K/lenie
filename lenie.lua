@@ -233,6 +233,20 @@ function gen_html(src, mdfiles, rc)
 end
 
 
+function read_css(repo_dir)
+	local fpath = repo_dir .. "/style.css"
+	if file_exists(fpath) then
+		local fd = io.open(fpath, "r")
+		if fd then
+			local css = fd:read("*a")
+			fd:close()
+			return css
+		end
+	end
+	return false
+end
+
+
 function gen_css(rc)
 	local css = {}
 	local pad = rc.padding
@@ -260,9 +274,6 @@ function gen_css(rc)
 
 	return table.concat(css, "\n")
 end
-function read_css(repo_dir)
-	-- TODO if there is a style.css in the repo read that file and return its content as string
-end
 
 
 -- Read all files in the specified source directory "src" and generate HTML code to be stored in
@@ -276,7 +287,7 @@ function generate(src, dst)
 	local html_pages = gen_html(src, mdfiles, CONF)
 	-- If a style.css is in the repository that is an explicit sign for lenie not to generate
 	-- one from the config and simply use the manually added one.
-	local style_css = file_exists(src.."/style.css") or gen_css(CONF)
+	local style_css = read_css(src) or gen_css(CONF)
 
 	-- Write HTML files
 	for fname,page in pairs(html_pages) do
@@ -295,12 +306,10 @@ function generate(src, dst)
 		if CONF.verbose then print(string.format("Writing CSS to %s", fname)) end
 		local fd = io.open(fname, 'w')
 		if fd then
-			if style_css == true then
-				io.popen(string.format("cp %q %q", src.."/style.css", fname))
-			else
-				fd:write(style_css)
-				fd:close()
-			end
+			fd:write(style_css)
+			fd:close()
+		else
+			print(string.format("ERROR: Could not write to %s", fname))
 		end
 	end
 
