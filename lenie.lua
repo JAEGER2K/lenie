@@ -26,14 +26,6 @@ CONF = {
 	blog_title = "default lenie blog-title",
 	clean_html = false,
 }
-
-
---[[ Global state table, all fields are false until initialized.
-STATE = {
-	www_path = false,
-	repo_path = false,
-}
---]]
 --}}}
 
 
@@ -268,6 +260,9 @@ function gen_css(rc)
 
 	return table.concat(css, "\n")
 end
+function read_css(repo_dir)
+	-- TODO if there is a style.css in the repo read that file and return its content as string
+end
 
 
 -- Read all files in the specified source directory "src" and generate HTML code to be stored in
@@ -278,9 +273,10 @@ function generate(src, dst)
 	if up_to_date(src) then return "Blog already up to date" end
 
 	local mdfiles = gather_mdfiles(src)
-	--local index_html = gen_html(src, mdfiles, CONF)
 	local html_pages = gen_html(src, mdfiles, CONF)
-	local style_css = gen_css(CONF)
+	-- If a style.css is in the repository that is an explicit sign for lenie not to generate
+	-- one from the config and simply use the manually added one.
+	local style_css = file_exists(src.."/style.css") or gen_css(CONF)
 
 	-- Write HTML files
 	for fname,page in pairs(html_pages) do
@@ -299,8 +295,12 @@ function generate(src, dst)
 		if CONF.verbose then print(string.format("Writing CSS to %s", fname)) end
 		local fd = io.open(fname, 'w')
 		if fd then
-			fd:write(style_css)
-			fd:close()
+			if style_css == true then
+				io.popen(string.format("cp %q %q", src.."/style.css", fname))
+			else
+				fd:write(style_css)
+				fd:close()
+			end
 		end
 	end
 
