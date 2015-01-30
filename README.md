@@ -156,7 +156,7 @@ overwrite each others HTML files.
 If the remote is at */home/myuser/myblog* on *myserver.net* to which you have ssh access and you
 are on your local computer at *~/blogs/*, then the command would be:
 
-    $ git clone myuser@myserver.net:myblog/git mybloglocal
+    $ git clone myuser@myserver.net:myblog mybloglocal
 
 This will create an empty repository in *~/blogs/mybloglocal*.
 

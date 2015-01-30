@@ -335,8 +335,8 @@ function init( repo_path, www_path )
 	-- Create directory repo_path, repo_path/src
 	assert( os.execute("mkdir " .. repo_path) == 0 )
 	assert( os.execute("mkdir " .. string.format("%s/src", repo_path)) == 0 )
-	-- Create bare repository in repo_path/git
-	assert( os.execute(string.format("git init --bare --shared %s/git", repo_path)) == 0 )
+	-- Create bare repository in repo_path/.git
+	assert( os.execute(string.format("git init --bare --shared %s/.git", repo_path)) == 0 )
 
 	local lenie_found, lenie_path = installed("lenie.lua")
 	assert( lenie_found, "ERROR: lenie.lua is not installed" )
@@ -344,7 +344,7 @@ function init( repo_path, www_path )
 	h[#h+1] = "#!/usr/bin/env bash"
 	h[#h+1] = "#"
 	h[#h+1] = "# This hook is executed by git after receiving data that was pushed to this"
-	h[#h+1] = "# repository. $GIT_DIR will point to ?/myblog/git/ where it will find ./HEAD"
+	h[#h+1] = "# repository. $GIT_DIR will point to ?/myblog/.git/ where it will find ./HEAD"
 	h[#h+1] = "# and ./refs/heads/master. As per the directory structure of lenie the source"
 	h[#h+1] = "# files (*.md and rc.lua) are to be checked out to ?/myblog/src/, which is at"
 	h[#h+1] = "# ../src/ relative to $GIT_DIR."
@@ -359,7 +359,7 @@ function init( repo_path, www_path )
 	h[#h+1] = string.format('%s generate "$SRCDIR" %q\n', lenie_path, www_path )
 	local hooksrc = table.concat(h, "\n")
 
-	local hook_path = string.format("%s/git/hooks/post-receive", repo_path)
+	local hook_path = string.format("%s/.git/hooks/post-receive", repo_path)
 	local fd = assert( io.open(hook_path, 'w+'), string.format("ERROR: Unable to open %s for writing", hook_path))
 	fd:write(hooksrc); fd:close()							-- write post-receive hook to file
 	assert( os.execute("chmod +x " .. hook_path) == 0 )		-- make hook executable
