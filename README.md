@@ -226,36 +226,8 @@ default configuration.
 State of development
 --------------------
 *lenie* is not entirely ready for prime time yet, but development has advanced to beta stage.
-Most work so far has been laying out the concept and architecture, reading manpages and brushing
-up my HTML/CSS and implementing the very basic core features.
 
-The following is a list of core features implemented in the beta of *lenie*:
-
-* ~~Automated setup of the server repository via *$ lenie init <blog dir> <web server dir>*,
-much like *$ git init*~~
-* ~~Configuration of number of posts displayed on the index~~
-* ~~More configuration options for CSS appearance~~
-* ~~Generation of pages dedicated to single posts~~
-* ~~Headers for posts displaying date of publishing, last modification, author~~
-* ~~Ordering posts by configurable criteria~~
-
-And this is a list of planned work during the beta:
-
-* ~~Add option to use a custom CSS style commited to the repository instead of the generated one~~
-* Efficiency: Currently *lenie* is pretty damn fast but has only been tested with small blogs of
-a limited post-count. In order for that speed to scale for blogs with 1000+ posts *lenie* needs
-to learn to selectively generate only those pages affected by affected the current commit. Once
-that is done *lenies* scalability is determined by *git*, which is proven to scale way beyond
-the amount of text a single person can write in their lifetime.
-* Host an example blog (duh, I already have written the development documentation as blog, it
-only needs to be hosted)
-* Something something test cases
-* Consider replacing the default *markdown* with one of the many alternatives to provide
-additional features for formatting and ease of use (eg. images embedded in the text)
-* ~~delete HTML pages that are no longer needed~~
-* Find, document and eliminate all bugs
-
-Feature additions for *lenie* after a stable release:
+**Feature additions for *lenie* after a stable release:**
 
 * *$ lenie init* should provide the option to write the default config to file and add it to the
 new repository
