@@ -175,7 +175,9 @@ function gen_html(src, mdfiles, rc)
 		local s2 = string.format('<span id="secondary">on %s%s</span>', post.date, update)
 		t[#t+1] = string.format('%s %s', s1, s2)
 		t[#t+1] = '</div><div id="post">'
-		t[#t+1] = io.popen(string.format('markdown --html4tags "%s/%s"', src, post.fname)):read('*a')
+		local mdcmd = string.format('markdown --html4tags "%s/%s"', src, post.fname)
+		if CONF.verbose then print("Executing: " .. mdcmd) end
+		t[#t+1] = io.popen( mdcmd ):read('*a')
 		posts[ix] = table.concat(t)
 		names[ix] = post.title
 	end
