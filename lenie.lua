@@ -177,7 +177,9 @@ function gen_html(src, mdfiles, rc)
 		t[#t+1] = '</div><div id="post">'
 		local mdcmd = string.format('markdown --html4tags "%s/%s"', src, post.fname)
 		if CONF.verbose then print("Executing: " .. mdcmd) end
-		t[#t+1] = io.popen( mdcmd ):read('*a')
+		local fd = io.popen( mdcmd )
+		t[#t+1] = fd:read('*a')
+		fd:close()
 		posts[ix] = table.concat(t)
 		names[ix] = post.title
 	end
