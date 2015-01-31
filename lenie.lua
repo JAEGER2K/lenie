@@ -141,12 +141,14 @@ end
 function gather_mdfiles(srcdir)
 	if CONF.verbose then print("Sourcing markdown files from "..srcdir) end
 	local mdfiles = {}
-	for fname in io.popen('ls -t "' .. srcdir .. '"'):lines() do
+	local ls = io.popen(string.format("ls -t %q", srcdir))
+	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
 		if mdfile and mdfile ~= "preamble.md" then
 			mdfiles[#mdfiles+1] = get_metainfo(mdfile)
 		end
 	end
+	ls:close()
 	-- Sort mdfiles based on the unix timestamp of the commit in descending order (newest first)
 	local sortfunctions = {
 		last_modified = function(a,b) return a.t > b.t end,
@@ -416,7 +418,9 @@ function sanity_checks()
 	end
 	-- Check that the installed Lua interpreter has the correct version
 	local req_version = {major=2, minor=0}
-	local version = io.popen("luajit -v"):read("*l")
+	local fd = io.popen("luajit -v")
+	local version = fd:read("*l")
+	fd:close()
 	local major,minor,rev = version:match("(%d)%.(%d)%.(%d)")
 	major, minor, rev = tonumber(major), tonumber(minor), tonumber(rev)
 
