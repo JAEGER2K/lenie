@@ -144,7 +144,7 @@ function gather_mdfiles(srcdir)
 	local ls = io.popen(string.format("ls -t %q", srcdir))
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
-		if mdfile and mdfile ~= "preamble.md" then
+		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
 			mdfiles[#mdfiles+1] = get_metainfo(mdfile)
 		end
 	end
@@ -183,6 +183,7 @@ function gen_html(src, mdfiles, rc)
 		local fd = io.popen( mdcmd )
 		t[#t+1] = fd:read('*a')
 		fd:close()
+		t[#t+1] = '</div>'
 		posts[ix] = table.concat(t)
 		names[ix] = post.title
 	end
@@ -193,6 +194,14 @@ function gen_html(src, mdfiles, rc)
 	if file_exists(src.."/preamble.md") then
 		local fd = io.popen(string.format('markdown --html4tags "%s/preamble.md"', src))
 		preamble = fd:read('*a')
+		fd:close()
+	end
+
+	-- Generate the HTML for the footer, if there is a markdown file in the working dir.
+	local footer = false
+	if file_exists(src.."/footer.md") then
+		local fd = io.popen(string.format('markdown --html4tags "%s/footer.md"', src))
+		footer = fd:read('*a')
 		fd:close()
 	end
 
@@ -213,7 +222,7 @@ function gen_html(src, mdfiles, rc)
 	do
 		local i = rc.max_posts_on_index		-- nr of posts included on index.html
 		if i < 0 or i > num_posts then i = num_posts end
-		posts[#posts+1] = table.concat(posts, "</div><br /><br />", 1, i)
+		posts[#posts+1] = table.concat(posts, "<br /><br />", 1, i)
 		names[#names+1] = "index"
 	end
 
@@ -229,11 +238,15 @@ function gen_html(src, mdfiles, rc)
 		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, names[i])
 		html[#html+1] = '<body>'
 		html[#html+1] = '<div id="preamble">'
-		html[#html+1] = preamble or "<h1>create preamble.md to replace this default header</h>"
+		html[#html+1] = preamble or '<h1>create preamble.md to replace this default header</h>'
 		html[#html+1] = '<hr></div>'
 		-- Post
 		html[#html+1] = posts[i]
 		-- Footer
+		if footer then
+			html[#html+1] = '<br /><hr>'
+			html[#html+1] = footer
+		end
 		html[#html+1] = '</body></html>'
 		pages[names[i]] = table.concat(html)
 	end
@@ -347,7 +360,7 @@ function init( repo_path, www_path )
 	-- Create bare repository in repo_path/.git
 	assert( os.execute(string.format("git init --bare --shared %s/.git", repo_path)) == 0 )
 
-	local lenie_found, lenie_path = installed("lenie.lua")
+	local lenie_found, lenie_path = installed("lenie") or installed("lenie.lua")
 	assert( lenie_found, "ERROR: lenie.lua is not installed" )
 	local h = {}
 	h[#h+1] = "#!/usr/bin/env bash"
