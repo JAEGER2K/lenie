@@ -125,6 +125,7 @@ function get_metainfo(fname)
 	info.T = fd:read('*l'):match('%d+')
 	info.date = fd:read('*l'):match('[^%+]+')
 	info.author = fd:read('*l')
+	fd:close()
 	-- Query the git repository for information on the newest version of this file
 	fd = io.popen(string.format('git log -1 --pretty="format:%%ct%%n%%cD%%n%%an" -- %q', fname))
 	info.t = fd:read('*l'):match('%d+')
@@ -188,7 +189,9 @@ function gen_html(src, mdfiles, rc)
 	-- Generate the HTML for the preamble text, if there is a markdown file for it.
 	local preamble = false
 	if file_exists(src.."/preamble.md") then
-		preamble = io.popen(string.format('markdown --html4tags "%s/preamble.md"', src)):read('*a')
+		local fd = io.popen(string.format('markdown --html4tags "%s/preamble.md"', src))
+		preamble = fd:read('*a')
+		fd:close()
 	end
 
 	-- Additionally, add an entry for a page with a listing of all posts and links to them. This
@@ -396,6 +399,7 @@ function clean_www(repo_dir, www_dir)
 			if CONF.verbose then print(string.format('Removed %q', rmpath)) end
 		end
 	end
+	lshtml:close()
 end
 --}}}
 
