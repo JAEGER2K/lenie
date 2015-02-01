@@ -206,7 +206,7 @@ On the server side there needs to be the following additional software installed
 
 1. The basic suite of unix tools such as ls, grep, awk, etc
 2. A web server of your choice (nginx, lighttpd, apache, etc)
-3. markdown (currently the reference implementation *markdown.pl*)
+3. [lua-discount](https://github.com/h0tw1r3/lua-discount) as installation of markdown
 4. *lenie*
 5. A [properly configured](https://stribika.github.io/2015/01/04/secure-secure-shell.html) SSH server
 
