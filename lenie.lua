@@ -1,5 +1,7 @@
 #!/usr/bin/env luajit
 
+require("discount")
+
 local ffi = require("ffi")
 ffi.cdef[[
 int access(const char *pathname, int mode);
@@ -178,10 +180,8 @@ function gen_html(src, mdfiles, rc)
 		local s2 = string.format('<span id="secondary">on %s%s</span>', post.date, update)
 		t[#t+1] = string.format('%s %s', s1, s2)
 		t[#t+1] = '</div><div id="post">'
-		local mdcmd = string.format('markdown --html4tags "%s/%s"', src, post.fname)
-		if CONF.verbose then print("Executing: " .. mdcmd) end
-		local fd = io.popen( mdcmd )
-		t[#t+1] = fd:read('*a')
+		local fd = io.open(string.format('%s/%s', src, post.fname))
+		t[#t+1] = discount(fd:read('*a'))
 		fd:close()
 		t[#t+1] = '</div>'
 		posts[ix] = table.concat(t)
@@ -192,16 +192,16 @@ function gen_html(src, mdfiles, rc)
 	-- Generate the HTML for the preamble text, if there is a markdown file for it.
 	local preamble = false
 	if file_exists(src.."/preamble.md") then
-		local fd = io.popen(string.format('markdown --html4tags "%s/preamble.md"', src))
-		preamble = fd:read('*a')
+		local fd = io.open(string.format('%s/preamble.md', src))
+		preamble = discount(fd:read('*a'))
 		fd:close()
 	end
 
 	-- Generate the HTML for the footer, if there is a markdown file in the working dir.
 	local footer = false
 	if file_exists(src.."/footer.md") then
-		local fd = io.popen(string.format('markdown --html4tags "%s/footer.md"', src))
-		footer = fd:read('*a')
+		local fd = io.open(string.format('%s/footer.md', src))
+		footer = discount(fd:read('*a'))
 		fd:close()
 	end
 
