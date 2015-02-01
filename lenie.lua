@@ -360,7 +360,7 @@ function init( repo_path, www_path )
 	-- Create bare repository in repo_path/.git
 	assert( os.execute(string.format("git init --bare --shared %s/.git", repo_path)) == 0 )
 
-	local lenie_found, lenie_path = installed("lenie") or installed("lenie.lua")
+	local lenie_found, lenie_path = installed("lenie")
 	assert( lenie_found, "ERROR: lenie.lua is not installed" )
 	local h = {}
 	h[#h+1] = "#!/usr/bin/env bash"
