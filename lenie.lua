@@ -361,7 +361,7 @@ function init( repo_path, www_path )
 	assert( os.execute(string.format("git init --bare --shared %s/.git", repo_path)) == 0 )
 
 	local lenie_found, lenie_path = installed("lenie")
-	assert( lenie_found, "ERROR: lenie.lua is not installed" )
+	assert( lenie_found, "ERROR: 'lenie' not found in install path, did you install it as 'lenie.lua'?" )
 	local h = {}
 	h[#h+1] = "#!/usr/bin/env bash"
 	h[#h+1] = "#"
@@ -422,7 +422,7 @@ end
 --{{{ MAIN
 function sanity_checks()
 	-- Make sure all programs required to run this script are installed
-	local req_progs = {"markdown", "git", "grep", "awk", "luajit"}
+	local req_progs = {"markdown", "git", "grep", "awk", "luajit", "lenie"}
 	for ix,prog in ipairs(req_progs) do
 		if not installed(prog) then
 			print(string.format("ERROR: The program %q is required but can't be found", prog))

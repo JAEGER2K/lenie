@@ -129,8 +129,8 @@ anyway.
 Installation
 ------------
 ###On the server side...
-... *lenie* needs to be installed in a folder included in the install path such
-as /usr/bin or /usr/local/bin. You then call
+... *lenie* needs to be installed as **lenie** in a folder included in the install path, eg.
+**/usr/bin/lenie** (Not as /usr/bin/lenie.lua). You then call
 
     $ lenie init <new repo> <HTML destination>
 
