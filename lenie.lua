@@ -52,7 +52,7 @@ end
 -- library. Returns 0 when file exists or permission is granted, -1 otherwise.
 function access(fname, mode)
 	assert(fname and type(fname) == "string")
-	if not mode then mode = 0			-- test for existence
+	if not mode then mode = 0				-- test for existence
 	elseif mode == "r" then mode = 4		-- test for read permission
 	elseif mode == "w" then mode = 2		-- test for write permission
 	elseif mode == "x" then mode = 1		-- test for execute permission
@@ -62,7 +62,19 @@ function access(fname, mode)
 end
 
 
-function file_exists(fname) if access(fname) == 0 then return true else return false end end
+function path(p)
+	assert(type(p) == "string")
+	-- Translate relative paths to absolute paths
+	if p:sub(1,1) ~= '/' and p:sub(1,2) ~= '~/' then
+		p = string.format("%s/%s", os.getenv("PWD"), p)
+	end
+	return p
+end
+
+function file_exists(fname)
+	if access(fname) == 0 then return true else return false end
+end
+
 function installed(pname)
 	local path = os.getenv("PATH")
 	for dir in string.gmatch(path, "[^:]+") do
@@ -390,8 +402,8 @@ function init( repo_path, www_path )
 		"Don't forget to add the SSH keys of everyone who should be able to push to this blog"
 		.. " to '$HOME/.ssh/authorized_keys'. See 'man ssh' for details.",
 	}
-	print("\nSetup completed. The blog repository has been created at " .. repo_path ..
-	" and has been configured to save all generated HTML files to " .. www_path .. "\n")
+	print("\nSetup completed. The blog repository has been created in " .. repo_path ..
+	" and configured to save all generated HTML files to " .. www_path .. "\n")
 	for ix,str in ipairs( hints ) do
 		print( string.format("Hint:\n%s", str) )
 	end
@@ -462,29 +474,20 @@ end
 -- Parse input arguments, check that the number or arguments is correct and the permissions of
 -- the specified directories are sufficient.
 function parse_input()
-	local exec_path, arg1, arg2 = arg[1], arg[2], arg[3]
-	if exec_path == "generate" or exec_path == "gen" then
-		local repo_dir, www_dir = arg1, arg2
-		if repo_dir and www_dir then
-			exec_path = "gen"
-		else
-			print_usage("ERROR: 'lenie gen' requires two paths as arguments.")
-			return false
-		end
-	elseif exec_path == "initialize" or exec_path == "init" then
-		local repo_path, www_dir = arg1, arg2
-		if repo_path and www_dir then
-			exec_path = "init"
-		else
-			print_usage("ERROR: 'lenie init' requires two paths as arguments.")
-			return false
-		end
+	if not arg[1] or not arg[2] or not arg[3] then
+		print_usage()
+		return false
+	end
+	local cmd, path1, path2 = arg[1], path(arg[2]), path(arg[3])
+
+	if cmd == "generate" or cmd == "gen" then
+		return { "gen", path1, path2 }
+	elseif cmd == "initialize" or cmd == "init" then
+		return { "init", path1, path2 }
 	else
 		print_usage()
 		return false
 	end
-
-	return {exec_path, arg1, arg2}
 end
 
 
