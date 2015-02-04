@@ -398,15 +398,8 @@ function init( repo_path, www_path )
 	fd:write(hooksrc); fd:close()							-- write post-receive hook to file
 	assert( os.execute("chmod +x " .. hook_path) == 0 )		-- make hook executable
 
-	local hints = {
-		"Don't forget to add the SSH keys of everyone who should be able to push to this blog"
-		.. " to '$HOME/.ssh/authorized_keys'. See 'man ssh' for details.",
-	}
 	print("\nSetup completed. The blog repository has been created in " .. repo_path ..
 	" and configured to save all generated HTML files to " .. www_path .. "\n")
-	for ix,str in ipairs( hints ) do
-		print( string.format("Hint:\n%s", str) )
-	end
 end
 --}}}
 
