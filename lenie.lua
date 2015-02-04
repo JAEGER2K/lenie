@@ -453,7 +453,7 @@ end
 
 
 function print_usage(msg)
-	if msg then print(msg) end
+	if msg then print(msg,"\n") end
 	local usage = {
 		[[lenie init <path of repo to be created> <path to write HTML files>]],
 		[[lenie generate <path to src dir of repo> <path to dest dir>]],
@@ -467,25 +467,24 @@ end
 -- Parse input arguments, check that the number or arguments is correct and the permissions of
 -- the specified directories are sufficient.
 function parse_input()
-	if not arg[1] or not arg[2] or not arg[3] then
-		print_usage()
-		return false
-	end
-	local cmd, path1, path2 = arg[1], path(arg[2]), path(arg[3])
+	if arg[1] and arg[2] and arg[3] then
+		local cmd, path1, path2 = arg[1], path(arg[2]), path(arg[3])
 
-	if cmd == "generate" or cmd == "gen" then
-		return { "gen", path1, path2 }
-	elseif cmd == "initialize" or cmd == "init" then
-		return { "init", path1, path2 }
-	else
-		print_usage()
-		return false
+		if cmd == "generate" or cmd == "gen" then
+			return { "gen", path1, path2 }
+		elseif cmd == "initialize" or cmd == "init" then
+			return { "init", path1, path2 }
+		end
 	end
+
+	print_usage("Incorrect user input")
+	return false
 end
 
 
 function main()
-	local input = assert( parse_input(), "Input parsing failed" )
+	local input = parse_input()
+	if not input then os.exit() end
 	assert( sanity_checks(), "Sanity checks failed" )
 	if input[1] == "init" then				--> lenie init
 		print( init(input[2], input[3]) )
