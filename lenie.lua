@@ -161,17 +161,13 @@ function get_metainfo(fname)
 end
 
 
-function gather_mdfiles(srcdir)
-	if CONF.verbose then print("Sourcing markdown files from "..srcdir) end
+function gather_mdfiles(srcdir, ls)
+	if CONF.verbose then print("Sourcing relevant markdown files from "..srcdir) end
 	local mdfiles = {}
-	--[[
-	local ls = io.popen(string.format("ls -t %q", srcdir))
-	--]]
-	-- Get a list of all files that changed between the commit currently active in the index and
-	-- the one represented by the generated HTML code (as specified by the sha1 in src/rev)
-	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", ))
+	local ls = ls or io.popen(string.format("ls -t %q", srcdir))
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
+		-- TODO remove first clause here
 		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
 			mdfiles[#mdfiles+1] = get_metainfo(mdfile)
 		end
@@ -189,31 +185,106 @@ function gather_mdfiles(srcdir)
 end
 
 
-function gen_html(src, mdfiles, rc)
+-- Convert received mardown files to HTML and return that in a table of strings
+function gen_posts(srcdir, mdfiles, rc, _posts)
+	for ix,p in ipairs(mdfiles) do
+		if not _posts[p.title] then
+			local t = {}
+			t[#t+1] = '<div id="postinfo">'
+			local nr = ix
+			if string.find(rc.sorting, "last_") then nr = (#mdfiles-ix)+1 end
+			local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', nr, p.title, p.title, p.author)
+			local update = ""
+			if p.t ~= p.T then update = string.format(" (updated %s)", p.update) end
+			local s2 = string.format('<span id="secondary">on %s%s</span>', p.date, update)
+			t[#t+1] = string.format('%s %s', s1, s2)
+			t[#t+1] = '</div><div id="post">'
+			local fd = io.open(string.format('%s/%s', srcdir, p.fname))
+			t[#t+1] = discount(fd:read('*a'))
+			fd:close()
+			t[#t+1] = '</div>'
+			_posts[p.title] = table.concat(t)
+		end
+	end
+end
+
+
+function gen_index_html(srcdir, mdfiles, rc, _posts)
+	-- Create an array containing only the subset from mdfiles that is relevant for index.html
+	local subset = mdfiles
+	if rc.max_posts_on_index > 0 and rc.max_posts_on_index < #mdfiles then
+		local t = {}
+		for ix=1, rc.max_posts_on_index do
+			t[ix] = mdfiles[ix]
+		end
+		subset = t
+	end
+
+	-- Generate the posts; they will be stored in the table we pass as last argument
+	gen_posts(srcdir, subset, rc, _posts)
+
+	-- Create an array referencing the relevant subset from _posts
+	local t = {}
+	for p in ipairs(subset) do
+		t[#t+1] = _posts[p.title]
+	end
+	return table.concat(t, "<br /><br />")
+end
+
+
+function gen_listing_html(mdfiles)
+	local listing = {}
+	for ix, post in ipairs(mdfiles) do
+		local name = post.title
+		listing[#listing+1] = string.format('#%d\t<a href="%s.html">%s</a>', ix, name, name)
+	end
+	return table.concat(listing, "<br />\n")
+end
+
+
+function gen_html(src, rc)
 	assert(type(src) == "string", "first argument needs to be a string describing the path to the source directory")
 	assert(type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings")
 
-	-- Convert markdown files to HTML and store each one as string in an array
-	local posts, names = {}, {}
-	for ix,post in ipairs(mdfiles) do
-		local t = {}
-		t[#t+1] = '<div id="postinfo">'
-		local nr = ix
-		if string.find(rc.sorting, "last_") then nr = (#mdfiles-ix)+1 end
-		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', nr, post.title, post.title, post.author)
-		local update = ""
-		if post.t ~= post.T then update = string.format(" (updated %s)", post.update) end
-		local s2 = string.format('<span id="secondary">on %s%s</span>', post.date, update)
-		t[#t+1] = string.format('%s %s', s1, s2)
-		t[#t+1] = '</div><div id="post">'
-		local fd = io.open(string.format('%s/%s', src, post.fname))
-		t[#t+1] = discount(fd:read('*a'))
-		fd:close()
-		t[#t+1] = '</div>'
-		posts[ix] = table.concat(t)
-		names[ix] = post.title
+	-- Create list with file names and meta data of all posts
+	local mdfiles = gather_mdfiles(src)
+
+	-- The table "pages" stores the HTML-bodies of posts with the posts title as key. This is
+	-- the exact set of HTML pages to be generated; for every entry one HTML page will be
+	-- generated.
+	local pages = {}
+
+	-- Create the index.html and by doing so generate all the posts contained on it and store
+	-- them in "pages".
+	pages.index = gen_index_html(src, mdfiles, rc, pages)
+
+	-- First, get a list of all files that changed between the commit currently active in the
+	-- repository-index and the one represented by the generated HTML code
+	local r = get_working_rev(src)
+	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", r))
+	-- TODO outsource into own function, possibly replace gather_mdfiles() with something more flexible
+	if rc.verbose then print("Generating posts based on file changes since last commit") end
+	-- Now generate pages for all posts that have been added/modified since the last commit but
+	-- have not already been generated during gen_index_html().
+
+	-- Find that specific subset of mdfiles and pass it to gen_posts()
+	local subset = {}
+	for fname in ls:lines() do
+		local title = fname:match('^(.+)%.md$')
+		local str = title .. ": Already generated"
+		if not pages[title] then
+			str = title .. ": Generating"
+			subset[#subset+1] = title
+		end
+		print(str)
 	end
-	local num_posts = #posts
+	ls:close()
+	gen_posts(src, gather_mdfiles(src, subset), rc, pages)
+
+
+	-- Additionally, add an entry for a page with a listing of all posts and links to them. This
+	-- includes posts that are contained on index.html and those that are not.
+	pages.listing = gen_listing_html()
 
 	-- Generate the HTML for the preamble text, if there is a markdown file for it.
 	local preamble = false
@@ -231,53 +302,33 @@ function gen_html(src, mdfiles, rc)
 		fd:close()
 	end
 
-	-- Additionally, add an entry for a page with a listing of all posts and links to them. This
-	-- includes posts that are contained on index.html and those that are not.
-	do
-		local listing = {}
-		for ix,name in ipairs(names) do
-			listing[#listing+1] = string.format('#%d\t<a href="%s.html">%s</a>', ix, name, name)
-		end
-		posts[#posts+1] = table.concat(listing, "<br />\n")
-		names[#names+1] = "listing"
-	end
 
-	-- Additionally, add one entry for the index page, containing as many posts as specified in
-	-- the configuration for "max_posts_on_index". A setting of 0 is valid and negative values
-	-- disable the limit
-	do
-		local i = rc.max_posts_on_index		-- nr of posts included on index.html
-		if i < 0 or i > num_posts then i = num_posts end
-		posts[#posts+1] = table.concat(posts, "<br /><br />", 1, i)
-		names[#names+1] = "index"
-	end
-
-	-- Now generate HTML pages with head, boody and footer for each entry in the above table
-	-- Now surround the generated HTML with a proper head, body and footer and store the results
-	-- in a table whose key-value pairs describe the file name (sans suffix) and corresponding
-	-- content for the actualy HTML pages to be written.
-	local pages = {}
-	for i=1,#posts do
+	-- Now surround the generated HTML page fragments with a proper head, body and footer and
+	-- store the results in a table whose key-value pairs describe the file name (sans suffix)
+	-- and corresponding content for the final HTML pages to be written.
+	local final_pages = {}
+	for title, page in pairs(pages) do
 		local html = {}
 		-- Header
 		html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
-		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, names[i])
+		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, title)
 		html[#html+1] = '<body>'
 		html[#html+1] = '<div id="preamble">'
+		-- TODO Why have a default preamble-text? The blog could work with only posts.
 		html[#html+1] = preamble or '<h1>create preamble.md to replace this default header</h>'
 		html[#html+1] = '<hr></div>'
 		-- Post
-		html[#html+1] = posts[i]
+		html[#html+1] = page
 		-- Footer
 		if footer then
 			html[#html+1] = '<br /><hr>'
 			html[#html+1] = footer
 		end
 		html[#html+1] = '</body></html>'
-		pages[names[i]] = table.concat(html)
+		final_pages[title] = table.concat(html)
 	end
 
-	return pages
+	return final_pages
 end
 
 
@@ -331,8 +382,7 @@ function generate(src, dst)
 	assert(access(dst, "w") == 0, "insufficient permissions in www directory")
 	if up_to_date(src) then return "Blog already up to date" end
 
-	local mdfiles = gather_mdfiles(src)
-	local html_pages = gen_html(src, mdfiles, CONF)
+	local html_pages = gen_html(src, CONF)
 	-- If a style.css is in the repository that is an explicit sign for lenie not to generate
 	-- one from the config and simply use the manually added one.
 	local style_css = read_css(src) or gen_css(CONF)
