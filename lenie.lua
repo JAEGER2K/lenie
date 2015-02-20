@@ -161,10 +161,10 @@ function get_metainfo(fname)
 end
 
 
-function gather_mdfiles(srcdir, ls)
+function gather_mdfiles(srcdir)
 	if CONF.verbose then print("Sourcing relevant markdown files from "..srcdir) end
 	local mdfiles = {}
-	local ls = ls or io.popen(string.format("ls -t %q", srcdir))
+	local ls = io.popen(string.format("ls -t %q", srcdir))
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
 		-- TODO remove first clause here
@@ -212,7 +212,9 @@ end
 function gen_index_html(srcdir, mdfiles, rc, _posts)
 	-- Create an array containing only the subset from mdfiles that is relevant for index.html
 	local subset = mdfiles
-	if rc.max_posts_on_index > 0 and rc.max_posts_on_index < #mdfiles then
+	if rc.max_posts_on_index == 0 then
+		subset = {}
+	elseif rc.max_posts_on_index > 0 and rc.max_posts_on_index < #mdfiles then
 		local t = {}
 		for ix=1, rc.max_posts_on_index do
 			t[ix] = mdfiles[ix]
@@ -221,11 +223,13 @@ function gen_index_html(srcdir, mdfiles, rc, _posts)
 	end
 
 	-- Generate the posts; they will be stored in the table we pass as last argument
-	gen_posts(srcdir, subset, rc, _posts)
+	if rc.max_posts_on_index ~= 0 then
+		gen_posts(srcdir, subset, rc, _posts)
+	end
 
 	-- Create an array referencing the relevant subset from _posts
 	local t = {}
-	for p in ipairs(subset) do
+	for _, p in ipairs(subset) do
 		t[#t+1] = _posts[p.title]
 	end
 	return table.concat(t, "<br /><br />")
@@ -244,7 +248,6 @@ end
 
 function gen_html(src, rc)
 	assert(type(src) == "string", "first argument needs to be a string describing the path to the source directory")
-	assert(type(mdfiles) == "table", "second argument needs to be an array containing markdown files as strings")
 
 	-- Create list with file names and meta data of all posts
 	local mdfiles = gather_mdfiles(src)
@@ -268,23 +271,25 @@ function gen_html(src, rc)
 	-- have not already been generated during gen_index_html().
 
 	-- Find that specific subset of mdfiles and pass it to gen_posts()
-	local subset = {}
+	local new_mdfiles = {}
 	for fname in ls:lines() do
 		local title = fname:match('^(.+)%.md$')
-		local str = title .. ": Already generated"
-		if not pages[title] then
-			str = title .. ": Generating"
-			subset[#subset+1] = title
+		if title and title ~= "preamble" and title ~= "footer" then
+			local str = title .. ": Already generated"
+			if not pages[title] then
+				str = title .. ": Generating"
+				new_mdfiles[#new_mdfiles+1] = get_metainfo(fname)
+			end
+			print(str)
 		end
-		print(str)
 	end
 	ls:close()
-	gen_posts(src, gather_mdfiles(src, subset), rc, pages)
+	gen_posts(src, new_mdfiles, rc, pages)
 
 
 	-- Additionally, add an entry for a page with a listing of all posts and links to them. This
 	-- includes posts that are contained on index.html and those that are not.
-	pages.listing = gen_listing_html()
+	pages.listing = gen_listing_html(mdfiles)
 
 	-- Generate the HTML for the preamble text, if there is a markdown file for it.
 	local preamble = false
