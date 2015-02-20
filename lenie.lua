@@ -164,10 +164,12 @@ end
 function gather_mdfiles(srcdir)
 	if CONF.verbose then print("Sourcing markdown files from "..srcdir) end
 	local mdfiles = {}
-	local ls = io.popen(string.format("ls -t %q", srcdir))
 	--[[
-	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", ))
+	local ls = io.popen(string.format("ls -t %q", srcdir))
 	--]]
+	-- Get a list of all files that changed between the commit currently active in the index and
+	-- the one represented by the generated HTML code (as specified by the sha1 in src/rev)
+	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", ))
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
 		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
