@@ -88,11 +88,22 @@ end
 
 
 -- Get sha1 of most recent commit from the blogs git repository
-function get_revision()
+function get_index_rev()
 	local fd = io.popen("git log -1 | grep commit | awk '{ print $2 }'")
 	local rev = fd:read("*a")
 	fd:close()
 	return rev
+end
+
+-- Get sha1 of currentlt checked out commit from the blogs working directory
+function get_working_rev(srcdir)
+	local fd = io.open(srcdir.."/rev", "r")
+	if fd then
+		local working_dir_rev = fd:read("*l")
+		fd:close()
+		return working_dir_rev
+	end
+	return false
 end
 
 
@@ -102,13 +113,11 @@ end
 -- blog - as seen by the web server - is out of sync with the blogs repository.
 -- This function does the comparison and returns true if the blog is in sync with the repo.
 function up_to_date(srcdir)
-	local fd = io.open(srcdir.."/rev", 'r')
-	if fd then
-		local checked_out = fd:read("*l")
-		fd:close()
-		if get_revision() == checked_out then return true end
+	if get_index_rev() == get_working_rev(srcdir) then
+		return true
+	else
+		return false
 	end
-	return false
 end
 
 
@@ -156,6 +165,9 @@ function gather_mdfiles(srcdir)
 	if CONF.verbose then print("Sourcing markdown files from "..srcdir) end
 	local mdfiles = {}
 	local ls = io.popen(string.format("ls -t %q", srcdir))
+	--[[
+	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", ))
+	--]]
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
 		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
@@ -350,7 +362,7 @@ function generate(src, dst)
 	-- Update rev file to most recent commit hash
 	do
 		local fd = io.open(src.."/rev", 'w+')
-		fd:write( get_revision() )
+		fd:write( get_index_rev() )
 		fd:close()
 	end
 
