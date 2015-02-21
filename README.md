@@ -240,13 +240,8 @@ default configuration.
 State of development
 --------------------
 *lenie* is not entirely ready for prime time yet, but development has advanced to beta stage.
+Currently parts of the core are a bit messy and some features (such as the efficiency
+improvements) are implemented in a prototype manner that should be refactored later for code
+hygene and better readability (it's not clear why some of the functions exist or when they
+should be used).
 
-**Feature additions for *lenie* after a stable release:**
-
-* *$ lenie init* should provide the option to write the default config to file and add it to the
-new repository
-* A smart concept for signing posts with your GPG-Key
-* Some assembly of stats about the blog, probably on a dedicated page
-* Support for directory hierarchies in the blog-repository (recursively scan for markdown files)
-* When removing posts some links from other posts to the removed pages may become invalid,
-think about a solution and whether it makes sense to try to solve this
