@@ -167,7 +167,6 @@ function gather_mdfiles(srcdir)
 	local ls = io.popen(string.format("ls -t %q", srcdir))
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
-		-- TODO remove first clause here
 		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
 			mdfiles[#mdfiles+1] = get_metainfo(mdfile)
 		end
@@ -265,7 +264,6 @@ function gen_html(src, rc)
 	-- repository-index and the one represented by the generated HTML code
 	local r = get_working_rev(src)
 	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", r))
-	-- TODO outsource into own function, possibly replace gather_mdfiles() with something more flexible
 	if rc.verbose then print("Generating posts based on file changes since last commit") end
 	-- Now generate pages for all posts that have been added/modified since the last commit but
 	-- have not already been generated during gen_index_html().
@@ -318,10 +316,11 @@ function gen_html(src, rc)
 		html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
 		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, title)
 		html[#html+1] = '<body>'
-		html[#html+1] = '<div id="preamble">'
-		-- TODO Why have a default preamble-text? The blog could work with only posts.
-		html[#html+1] = preamble or '<h1>create preamble.md to replace this default header</h>'
-		html[#html+1] = '<hr></div>'
+		if preamble then
+			html[#html+1] = '<div id="preamble">'
+			html[#html+1] = preamble
+			html[#html+1] = '<hr></div>'
+		end
 		-- Post
 		html[#html+1] = page
 		-- Footer
