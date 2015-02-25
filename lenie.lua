@@ -339,18 +339,16 @@ end
 
 function gen_posts(post_index, post_list)
 	local rc = CONF
-	-- loop (funct)
-	-- 		generate posts from a list
-	-- 		sleep TODO sleep interval and duration in CONF and rc.lua
 	local posts = {}
 	for fname,ix in pairs(post_list) do
-		meta = post_index[ix]
+		local meta = post_index[ix]
+		local fpath = string.match(meta.fname, '(.+)%.md$')
 
 		local t = {}
 		t[#t+1] = '<div id="postinfo">'
 		local nr = ix
 		if string.find(rc.sorting, "last_") then nr = (#post_index-ix)+1 end
-		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', nr, meta.title, meta.title, meta.author)
+		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', nr, fpath, meta.title, meta.author)
 		local update = ""
 		if meta.t ~= meta.T then update = string.format(" (updated %s)", meta.update) end
 		local s2 = string.format('<span id="secondary">on %s%s</span>', meta.date, update)
