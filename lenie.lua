@@ -7,6 +7,7 @@ ffi.cdef[[
 int access(const char *pathname, int mode);
 ]]
 
+
 --{{{ DEFAULT CONFIG
 -- Some sensible default config, color scheme is solarized light
 CONF = {
@@ -27,6 +28,7 @@ CONF = {
 	padding = { top="20px", right="20%", bottom="40px", left="20%" },
 	blog_title = "default lenie blog-title",
 	clean_html = false,
+	srcdir = false,				--> path to working dir with checked out files
 }
 --}}}
 
@@ -62,7 +64,7 @@ function access(fname, mode)
 end
 
 
-function path(p)
+function abspath(p)
 	assert(type(p) == "string")
 	-- Translate relative paths to absolute paths
 	if p:sub(1,1) ~= '/' and p:sub(1,2) ~= '~/' then
@@ -140,7 +142,6 @@ end
 
 
 --{{{ PATH 1: GENERATING STATIC HTML
--- Create table with files that need to be generated, sorted by date of modification
 function get_metainfo(fname)
 	local info = {}
 	-- Query the git repository for information on the first version of this file
@@ -155,16 +156,18 @@ function get_metainfo(fname)
 	info.update = fd:read('*l'):match('[^%+]+')
 	info.editor = fd:read('*l')
 	info.fname = fname
-	info.title = string.match(fname, '(.+)%.md$')
+	info.title = string.match(fname, '([^/]+)%.md$')	--> file name without suffix or path
 	fd:close()
 	return info
 end
 
 
-function gather_mdfiles(srcdir)
+--[[
+function get_postindex(srcdir)
 	if CONF.verbose then print("Sourcing relevant markdown files from "..srcdir) end
 	local mdfiles = {}
-	local ls = io.popen(string.format("ls -t %q", srcdir))
+	--local ls = io.popen(string.format("ls -t %q", srcdir))
+	local ls = io.popen("git ls-files --full-name")
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
 		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
@@ -243,13 +246,259 @@ function gen_listing_html(mdfiles)
 	end
 	return table.concat(listing, "<br />\n")
 end
+--]]
 
 
+function get_post_index()
+	local rc = CONF
+
+	local post_index = {}
+	--local ls = io.popen(string.format("ls -t %q", srcdir))
+	local ls = io.popen("git ls-files --full-name")
+	for fname in ls:lines() do
+		local mdfile = fname:match('^.+%.md$')
+		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
+			if rc.verbose then print(string.format("querying meta info on %s/%s", rc.srcdir, mdfile)) end
+			post_index[#post_index+1] = get_metainfo(mdfile)
+		end
+	end
+	ls:close()
+
+	-- Sort post index based on the configured sorting function
+	local sortfunctions = {
+		last_modified = function(a,b) return a.t > b.t end,
+		first_modified = function(a,b) return a.t < b.t end,
+		last_published = function(a,b) return a.T > b.T end,
+		first_published = function(a,b) return a.T < b.T end,
+	}
+	table.sort(post_index, sortfunctions[rc.sorting])
+	return mdfiles
+end
+
+
+function get_changed_files()
+	-- First, get a list of all files that changed between the commit currently active in the
+	-- repository-index and the one represented by the generated HTML code
+	local r = get_working_rev(rc.srcdir)
+	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", r))
+	-- This only gives us the file name but not the (sub)directory it is in, as a work-around we
+	-- create a LUT "changed" to store all the file names sans suffix or path and then traverse
+	-- "post_index" to find matches with meta.title.
+	local changed = {}		-- LUT for changed file names
+	local special = { ["preamble.md"]=1, ["footer.md"]=1, ["rc.lua"]=1 }
+	for fname in ls:lines() do
+		if special[fname] then
+			changed.all = true
+			break
+		end
+		local title = string.match(fname, '([^/]+)%.md$')
+		if title then changed[title] = true end
+	end
+	ls:close()
+
+	return changed
+end
+
+-- Receives the meta info of all markdown files as assembled by get_post_index() and returns a
+-- list of all posts to be generated. The returned list is a table where the name of the post is
+-- the key and the value is the index in the input array "post_index" where to find the meta
+-- info of that post. So if there is a post with the name "hello" then you can find the meta
+-- info to that post via post_index[post_list["hello"]]. Where "name" refers to the file name as
+-- stored in the meta info since this will be a unique identifier.
+function get_post_list(post_index)
+	local post_list = {}
+
+	local changed = get_changed_files()
+	local j = math.min(CONF.max_posts_on_index, #post_index)
+
+	if j < 0 or changed.all == true then		--> all posts need to be generated
+		for i,meta in ipairs(post_index) do
+			post_list[meta.fname] = i
+		end
+	else										--> only some of the posts need to be generated
+		-- All posts needed to assemble index.html
+		if j > 0 then
+			for i=1, j do
+				local meta = post_index[i]
+				post_list[meta.fname] = i
+			end
+		end
+		-- if j == 0 then index.html won't contain posts and none need to be added to post_list
+
+		-- All changed files
+		for i,meta in ipairs(post_index) do
+			if changed[meta.title] then
+				post_list[meta.fname] = i
+			end
+		end
+	end
+
+	return post_list
+end
+
+
+function gen_posts(post_index, post_list)
+	local rc = CONF
+	-- loop (funct)
+	-- 		generate posts from a list
+	-- 		sleep TODO sleep interval and duration in CONF and rc.lua
+	local posts = {}
+	for fname,ix in pairs(post_list) do
+		meta = post_index[ix]
+
+		local t = {}
+		t[#t+1] = '<div id="postinfo">'
+		local nr = ix
+		if string.find(rc.sorting, "last_") then nr = (#post_index-ix)+1 end
+		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', nr, meta.title, meta.title, meta.author)
+		local update = ""
+		if meta.t ~= meta.T then update = string.format(" (updated %s)", meta.update) end
+		local s2 = string.format('<span id="secondary">on %s%s</span>', meta.date, update)
+		t[#t+1] = string.format('%s %s', s1, s2)
+		t[#t+1] = '</div><div id="post">'
+		local fd = io.open(string.format('%s/%s', rc.srcdir, meta.fname))
+		t[#t+1] = discount(fd:read('*a'))
+		fd:close()
+		t[#t+1] = '</div>'
+		posts[fname] = table.concat(t)
+
+		--[[ TODO implement sleep() and test if rc.sleep_interval is enabled
+		if i % rc.sleep_interval == 0 then sleep(rc.sleep_duration) end
+		]]
+	end
+	return posts
+end
+
+
+function gen_index_html(post_index, posts)
+	local t = {}
+	local j = math.min(#post_index, CONF.max_posts_on_index)
+	if j < 0 then j = #post_index end
+	for i,meta in ipairs(post_index) do
+		if i > j then break end
+		t[#t+1] = posts[meta.fname]
+	end
+
+	return table.concat(t, "\n<br /><br />")
+end
+
+
+function gen_listing_html(post_index)
+	local listing = {}
+	for ix, post in ipairs(mdfiles) do
+		local name = post.title
+	end
+
+	local t = {}
+	for i,meta in ipairs(post_index) do
+		local fname = string.match(meta.fname, '(.+)%.md$')		--> file path without .md suffix
+		listing[#listing+1] = string.format('#%d\t<a href="%s.html">%s</a>', i, fname, meta.title)
+	end
+	return table.concat(t, "<br />\n")
+end
+
+
+function assemble_pages(post_index, post_list, fragments)
+	local rc = CONF
+	-- Generate the HTML for the preamble text, if there is a markdown file for it.
+	local preamble = false
+	if file_exists(rc.srcdir.."/preamble.md") then
+		local fd = io.open(string.format('%s/preamble.md', rc.srcdir))
+		preamble = discount(fd:read('*a'))
+		fd:close()
+	end
+	-- Generate the HTML for the footer, if there is a markdown file in the working dir.
+	local footer = false
+	if file_exists(rc.srcdir.."/footer.md") then
+		local fd = io.open(string.format('%s/footer.md', rc.srcdir))
+		footer = discount(fd:read('*a'))
+		fd:close()
+	end
+
+	-- Now surround the generated HTML page fragments with a proper head, body and footer and
+	-- store the results in a table whose key-value pairs describe the file name (sans suffix)
+	-- and corresponding content for the final HTML pages to be written.
+	local final_pages = {}
+	for fname,page in pairs(fragments) do
+		local meta = post_index[post_list[fname]]
+		local html = {}
+		-- Header
+		html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
+		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, meta.title)
+		html[#html+1] = '<body>'
+		if preamble then
+			html[#html+1] = '<div id="preamble">'
+			html[#html+1] = preamble
+			html[#html+1] = '<hr></div>'
+		end
+		-- Post
+		html[#html+1] = page
+		-- Footer
+		if footer then
+			html[#html+1] = '<br /><hr>'
+			html[#html+1] = footer
+		end
+		html[#html+1] = '</body></html>'
+		final_pages[fname] = table.concat(html)
+	end
+
+	return final_pages
+end
+
+
+function gen_html()
+	local rc = CONF
+	assert(type(rc.srcdir) == "string")
+	-- TODO Early out: Does anything need to be (re)generated? (func)
+
+	-- A1: Array of tables with meta info on every markdown file that is a post
+	-- L1: List of posts that need to be generated, file name as key, corresponding index of A1
+	-- as value
+	-- T1: Table of generated posts, file name as key, HTML-string as value
+
+	-- get metainfo on all posts in a sorted array: A1
+	local A1 = get_post_index()
+
+
+	-- A1 -> L1
+	-- create list of posts to be generated: L1 (func)
+	local L1 = get_post_list(A1)
+
+
+	-- A1,L1 -> T1
+	-- create table to store generated HTML of posts: T1
+	local T1 = gen_posts(A1, L1)
+
+
+	-- A1,T1 -> string:index.html
+	-- assemble index.html: look up post-names from the sorted meta-info array A1, the generated
+	-- HTML for these posts will be in a table T1
+	T1.index_html = gen_index_html(A1, T1)
+
+
+	-- A1 -> string:listing.html
+	-- assemble listing.html: All that is needed can be found in A1 (func)
+	T1.listing_html = gen_listing_html(A1)
+
+
+	-- create T2 to store all final HTML pages
+	-- generate preamble and footer
+	-- Generate final HTML files by concatenating the page fragments in T1 with preamble and
+	-- footer and store it in T2
+	local pages = assemble_pages(A1, L1, T1)
+
+
+	-- return table T2 with file names as key and final HTML as value
+	return pages
+end
+
+
+--[[
 function gen_html(src, rc)
 	assert(type(src) == "string", "first argument needs to be a string describing the path to the source directory")
 
 	-- Create list with file names and meta data of all posts
-	local mdfiles = gather_mdfiles(src)
+	local mdfiles = get_postindex(src)
 
 	-- The table "pages" stores the HTML-bodies of posts with the posts title as key. This is
 	-- the exact set of HTML pages to be generated; for every entry one HTML page will be
@@ -334,6 +583,7 @@ function gen_html(src, rc)
 
 	return final_pages
 end
+--]]
 
 
 function read_css(repo_dir)
@@ -536,7 +786,7 @@ end
 -- the specified directories are sufficient.
 function parse_input()
 	if arg[1] and arg[2] and arg[3] then
-		local cmd, path1, path2 = arg[1], path(arg[2]), path(arg[3])
+		local cmd, path1, path2 = arg[1], abspath(arg[2]), abspath(arg[3])
 
 		if cmd == "generate" or cmd == "gen" then
 			return { "gen", path1, path2 }
@@ -559,6 +809,7 @@ function main()
 	else									--> lenie generate
 		-- Read runtime config from rc.lua, store it in the global table "CONF"
 		read_rc(input[2], CONF)
+		CONF.srcdir = os.getenv("PWD")
 		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
 		if CONF.verbose then print( result ) end
