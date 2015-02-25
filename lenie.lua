@@ -253,7 +253,6 @@ function get_post_index()
 	local rc = CONF
 
 	local post_index = {}
-	--local ls = io.popen(string.format("ls -t %q", srcdir))
 	local ls = io.popen("git ls-files --full-name")
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
@@ -272,11 +271,12 @@ function get_post_index()
 		first_published = function(a,b) return a.T < b.T end,
 	}
 	table.sort(post_index, sortfunctions[rc.sorting])
-	return mdfiles
+	return post_index
 end
 
 
 function get_changed_files()
+	local rc = CONF
 	-- First, get a list of all files that changed between the commit currently active in the
 	-- repository-index and the one represented by the generated HTML code
 	local r = get_working_rev(rc.srcdir)
@@ -385,9 +385,6 @@ end
 
 function gen_listing_html(post_index)
 	local listing = {}
-	for ix, post in ipairs(mdfiles) do
-		local name = post.title
-	end
 
 	local t = {}
 	for i,meta in ipairs(post_index) do
@@ -420,11 +417,12 @@ function assemble_pages(post_index, post_list, fragments)
 	-- and corresponding content for the final HTML pages to be written.
 	local final_pages = {}
 	for fname,page in pairs(fragments) do
-		local meta = post_index[post_list[fname]]
+		--local meta = post_index[post_list[fname]]
+		local title = fname:match('([^/]+)%.md$')	-- TODO better solution for entries without .md
 		local html = {}
 		-- Header
 		html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
-		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, meta.title)
+		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, title)
 		html[#html+1] = '<body>'
 		if preamble then
 			html[#html+1] = '<div id="preamble">'
@@ -473,12 +471,12 @@ function gen_html()
 	-- A1,T1 -> string:index.html
 	-- assemble index.html: look up post-names from the sorted meta-info array A1, the generated
 	-- HTML for these posts will be in a table T1
-	T1.index_html = gen_index_html(A1, T1)
+	T1["index.md"] = gen_index_html(A1, T1)
 
 
 	-- A1 -> string:listing.html
 	-- assemble listing.html: All that is needed can be found in A1 (func)
-	T1.listing_html = gen_listing_html(A1)
+	T1["listing.md"] = gen_listing_html(A1)
 
 
 	-- create T2 to store all final HTML pages
@@ -643,10 +641,17 @@ function generate(src, dst)
 
 	-- Write HTML files
 	for fname,page in pairs(html_pages) do
-		local path = string.format("%s/%s.html", dst, fname)
-		local fd = io.open(path, 'w')
+		local path = string.format("%s/%s", dst, fname:match('(.+)/.+$') or "")
+		if not file_exists(path) then
+			local fd = io.popen(string.format("mkdir -p %q", path))
+			fd:close()
+		end
+
+		local title = fname:match('([^/]+)%.md$')
+		local fpath = string.format("%s/%s.html", path, title)
+		local fd = io.open(fpath, 'w')
 		if fd then
-			if CONF.verbose then print(string.format("Writing HTML to %s", path)) end
+			if CONF.verbose then print(string.format("Writing HTML to %s", fpath)) end
 			fd:write(page)
 			fd:close()
 		end
@@ -809,7 +814,8 @@ function main()
 	else									--> lenie generate
 		-- Read runtime config from rc.lua, store it in the global table "CONF"
 		read_rc(input[2], CONF)
-		CONF.srcdir = os.getenv("PWD")
+		local pwd = os.getenv("PWD")
+		CONF.srcdir = pwd:match('(.+)%.git$') .. "src"
 		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
 		if CONF.verbose then print( result ) end
