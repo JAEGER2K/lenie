@@ -384,12 +384,10 @@ end
 
 
 function gen_listing_html(post_index)
-	local listing = {}
-
 	local t = {}
 	for i,meta in ipairs(post_index) do
 		local fname = string.match(meta.fname, '(.+)%.md$')		--> file path without .md suffix
-		listing[#listing+1] = string.format('#%d\t<a href="%s.html">%s</a>', i, fname, meta.title)
+		t[#t+1] = string.format('#%d\t<a href="%s.html">%s</a>', i, fname, meta.title)
 	end
 	return table.concat(t, "<br />\n")
 end
