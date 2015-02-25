@@ -348,7 +348,7 @@ function gen_posts(post_index, post_list)
 		t[#t+1] = '<div id="postinfo">'
 		local nr = ix
 		if string.find(rc.sorting, "last_") then nr = (#post_index-ix)+1 end
-		local s1 = string.format('#%d <a href="%s.html">%s</a> by %s', nr, fpath, meta.title, meta.author)
+		local s1 = string.format('#%d <a href="/%s.html">%s</a> by %s', nr, fpath, meta.title, meta.author)
 		local update = ""
 		if meta.t ~= meta.T then update = string.format(" (updated %s)", meta.update) end
 		local s2 = string.format('<span id="secondary">on %s%s</span>', meta.date, update)
@@ -413,11 +413,10 @@ function assemble_pages(post_index, post_list, fragments)
 	-- and corresponding content for the final HTML pages to be written.
 	local final_pages = {}
 	for fname,page in pairs(fragments) do
-		--local meta = post_index[post_list[fname]]
 		local title = fname:match('([^/]+)%.md$')	-- TODO better solution for entries without .md
 		local html = {}
 		-- Header
-		html[#html+1] = '<!DOCTYPE html><html><link href="style.css" rel="stylesheet">'
+		html[#html+1] = '<!DOCTYPE html><html><link href="/style.css" rel="stylesheet">'
 		html[#html+1] = string.format('<head><title>%s - %s</title></head>', rc.blog_title, title)
 		html[#html+1] = '<body>'
 		if preamble then
