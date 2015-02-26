@@ -7,6 +7,11 @@ ffi.cdef[[
 int access(const char *pathname, int mode);
 ]]
 
+ffi.cdef[[
+unsigned int sleep(unsigned int seconds);
+]]
+
+
 
 --{{{ DEFAULT CONFIG
 -- Some sensible default config, color scheme is solarized light
@@ -29,6 +34,8 @@ CONF = {
 	blog_title = "default lenie blog-title",
 	clean_html = false,
 	srcdir = false,				--> path to working dir with checked out files
+	sleep_interval = 3,			--> posts to generate between sleeps
+	sleep_duration = 1,			--> sleep time in seconds
 }
 --}}}
 
@@ -253,9 +260,11 @@ end
 function gen_posts(post_index, post_list)
 	local rc = CONF
 	local posts = {}
+	local i = 0
 	for fname,ix in pairs(post_list) do
 		local meta = post_index[ix]
 		local fpath = string.match(meta.fname, '(.+)%.md$')
+		if rc.verbose then print("processing "..meta.fname) end
 
 		local t = {}
 		t[#t+1] = '<div id="postinfo">'
@@ -273,9 +282,11 @@ function gen_posts(post_index, post_list)
 		t[#t+1] = '</div>'
 		posts[fname] = table.concat(t)
 
-		--[[ TODO implement sleep() and test if rc.sleep_interval is enabled
-		if i % rc.sleep_interval == 0 then sleep(rc.sleep_duration) end
-		]]
+		i = i+1
+		if rc.sleep_interval > 0 and i % rc.sleep_interval == 0 then
+			if rc.verbose then print(string.format("%d posts processed, sleeping for %d seconds", i, rc.sleep_duration)) end
+			ffi.C.sleep(rc.sleep_duration)
+		end
 	end
 	return posts
 end
