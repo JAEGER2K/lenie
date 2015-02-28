@@ -130,25 +130,6 @@ function up_to_date(srcdir)
 end
 
 
--- Read the runtime config and return a table with the configuration state. If there is no rc
--- file, return default values. This function is sandboxed in its own environment for security
--- reasons and it expects the table for that environment as second argument. The runtime config
--- will be stored in that table.
---[[
-function read_rc(srcdir, rc)
-	-- Setting up the environment of the sandbox
-	local print, sprintf = print, string.format
-	local file_exists, importfile = file_exists, importfile
-	setfenv(1, rc)
-
-	local fname = srcdir.."/rc.lua"
-	if file_exists(fname) then importfile(fname)
-	else print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
-	end
-end
-]]
-
-
 -- There are three different configuration files to check, all of which may contain the same set
 -- of settings. First /etc/lenie/defaults.lua is read, providing defaults suggested by the
 -- system admin. Then rc.lua is read from the working dir of a blog, overwriting the defaults
@@ -162,8 +143,7 @@ function read_rc(rc)
 	local srcdir = CONF.srcdir
 	assert(srcdir, "CONF.srcdir must be set before calling read_rc()")
 	-- Set up the environment of the sandbox
-	local ipairs = ipairs
-	local print, sprintf = print, string.format
+	local print, sprintf, ipairs = print, string.format, ipairs
 	local file_exists, importfile = file_exists, importfile
 	setfenv(1, rc)
 
@@ -658,9 +638,7 @@ function main()
 		print( init(input[2], input[3]) )
 	else									--> lenie generate
 		-- Read runtime config from rc.lua, store it in the global table "CONF"
-		-- TODO CONF.srcdir = input[2]
-		local pwd = os.getenv("PWD")
-		CONF.srcdir = pwd:match('(.+)%.git$') .. "src"
+		CONF.srcdir = input[2]	-- TODO function to sanitize the path (resolve ../)
 		read_rc(CONF)
 		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
