@@ -16,7 +16,7 @@ unsigned int sleep(unsigned int seconds);
 --{{{ DEFAULT CONFIG
 -- Some sensible default config, color scheme is solarized light
 CONF = {
-	verbose = true,
+	verbose = false,
 	sorting = "last_modified",
 	max_posts_on_index = 10,
 	fg_color     = "#657b83",	--> base00 (regular)
@@ -34,7 +34,7 @@ CONF = {
 	blog_title = "default lenie blog-title",
 	clean_html = false,
 	srcdir = false,				--> path to working dir with checked out files
-	sleep_interval = 3,			--> posts to generate between sleeps
+	sleep_interval = 0,			--> posts to generate between sleeps
 	sleep_duration = 1,			--> sleep time in seconds
 }
 --}}}
@@ -134,6 +134,7 @@ end
 -- file, return default values. This function is sandboxed in its own environment for security
 -- reasons and it expects the table for that environment as second argument. The runtime config
 -- will be stored in that table.
+--[[
 function read_rc(srcdir, rc)
 	-- Setting up the environment of the sandbox
 	local print, sprintf = print, string.format
@@ -143,6 +144,37 @@ function read_rc(srcdir, rc)
 	local fname = srcdir.."/rc.lua"
 	if file_exists(fname) then importfile(fname)
 	else print( sprintf("WARNING: No rc.lua in %q, using default config", srcdir) )
+	end
+end
+]]
+
+
+-- There are three different configuration files to check, all of which may contain the same set
+-- of settings. First /etc/lenie/defaults.lua is read, providing defaults suggested by the
+-- system admin. Then rc.lua is read from the working dir of a blog, overwriting the defaults
+-- read before. Last, /etc/lenie/enforced.lua is read, overwriting both the systems default and
+-- the users blog specific settings. If one of these files doesn't exist, it is simply skipped;
+-- if none exist, hardcoded defaults from CONF are used.
+-- This function is sandboxed in its own environment for security reasons and it expects the
+-- table for that environment as argument.
+function read_rc(rc)
+	local verbose = CONF.verbose
+	local srcdir = CONF.srcdir
+	assert(srcdir, "CONF.srcdir must be set before calling read_rc()")
+	-- Set up the environment of the sandbox
+	local ipairs = ipairs
+	local print, sprintf = print, string.format
+	local file_exists, importfile = file_exists, importfile
+	setfenv(1, rc)
+
+	local paths = {"/etc/lenie/defaults.lua", srcdir.."/rc.lua", "/etc/lenie/enforced.lua"}
+	for i,fname in ipairs(paths) do
+		if file_exists(fname) then
+			if verbose then print(sprintf("[%d] reading %s", i, fname)) end
+			importfile(fname)
+		else
+			print(sprintf("Warning: %s does not exist", fname))
+		end
 	end
 end
 --}}}
@@ -626,9 +658,10 @@ function main()
 		print( init(input[2], input[3]) )
 	else									--> lenie generate
 		-- Read runtime config from rc.lua, store it in the global table "CONF"
-		read_rc(input[2], CONF)
+		-- TODO CONF.srcdir = input[2]
 		local pwd = os.getenv("PWD")
 		CONF.srcdir = pwd:match('(.+)%.git$') .. "src"
+		read_rc(CONF)
 		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
 		if CONF.verbose then print( result ) end

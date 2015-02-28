@@ -236,6 +236,15 @@ with *lenie* and should present no challenge to anyone who can read and write (y
 be a programmer). If **rc.lua** does not exist in the repo, *lenie* will use a possibly ugly
 default configuration.
 
+There are two other configuration files that *lenie* will look for, both under */etc/lenie*:
+
+* /etc/lenie/__defaults.lua__
+* /etc/lenie/__enforced.lua__
+
+Those should only be modified by the system admin and allow to provide a default config that is
+used by all blogs unless they provide their own *rc.lua* as well as a means to enforce settings
+no matter the blog specific user configuration.
+
 
 State of development
 --------------------
