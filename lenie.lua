@@ -13,7 +13,7 @@ unsigned int sleep(unsigned int seconds);
 
 
 
---{{{ DEFAULT CONFIG
+--{{{ GLOBALS
 -- Some sensible default config, color scheme is solarized light
 CONF = {
 	verbose = false,
@@ -37,6 +37,12 @@ CONF = {
 	sleep_interval = 0,			--> posts to generate between sleeps
 	sleep_duration = 1,			--> sleep time in seconds
 }
+
+-- Table for runtime state. This is split from CONF to provide an environment that can not be
+-- influenced through any of the config files.
+STATE = {
+	srcdir = false,				--> path to working dir with checked out files
+}
 --}}}
 
 
@@ -54,6 +60,11 @@ function importfile(fname)
 	if not f then error(e, 2) end
 	setfenv(f, getfenv(2))
 	return f()
+end
+
+
+function printf(s, ...)
+	print(string.format(s, ...))
 end
 
 
@@ -140,20 +151,20 @@ end
 -- table for that environment as argument.
 function read_rc(rc)
 	local verbose = CONF.verbose
-	local srcdir = CONF.srcdir
-	assert(srcdir, "CONF.srcdir must be set before calling read_rc()")
+	local srcdir = STATE.srcdir
+	assert(srcdir, "STATE.srcdir must be set before calling read_rc()")
 	-- Set up the environment of the sandbox
-	local print, sprintf, ipairs = print, string.format, ipairs
+	local printf, ipairs = printf, ipairs
 	local file_exists, importfile = file_exists, importfile
 	setfenv(1, rc)
 
 	local paths = {"/etc/lenie/defaults.lua", srcdir.."/rc.lua", "/etc/lenie/enforced.lua"}
 	for i,fname in ipairs(paths) do
 		if file_exists(fname) then
-			if verbose then print(sprintf("[%d] reading %s", i, fname)) end
+			if verbose then printf("[%d] reading %s", i, fname) end
 			importfile(fname)
 		else
-			print(sprintf("Warning: %s does not exist", fname))
+			printf("Warning: %s does not exist", fname)
 		end
 	end
 end
@@ -183,13 +194,14 @@ end
 
 function get_post_index()
 	local rc = CONF
+	local srcdir = STATE.srcdir
 
 	local post_index = {}
 	local ls = io.popen("git ls-files --full-name")
 	for fname in ls:lines() do
 		local mdfile = fname:match('^.+%.md$')
 		if mdfile and mdfile ~= "preamble.md" and mdfile ~= "footer.md" then
-			if rc.verbose then print(string.format("querying meta info on %s/%s", rc.srcdir, mdfile)) end
+			if rc.verbose then printf("querying meta info on %s/%s", srcdir, mdfile) end
 			post_index[#post_index+1] = get_metainfo(mdfile)
 		end
 	end
@@ -208,10 +220,9 @@ end
 
 
 function get_changed_files()
-	local rc = CONF
 	-- First, get a list of all files that changed between the commit currently active in the
 	-- repository-index and the one represented by the generated HTML code
-	local r = get_working_rev(rc.srcdir)
+	local r = get_working_rev(STATE.srcdir)
 	local ls = io.popen(string.format("git diff-tree --no-commit-id --name-only HEAD..%s", r))
 	-- This only gives us the file name but not the (sub)directory it is in, as a work-around we
 	-- create a LUT "changed" to store all the file names sans suffix or path and then traverse
@@ -271,6 +282,7 @@ end
 
 function gen_posts(post_index, post_list)
 	local rc = CONF
+	local srcdir = STATE.srcdir
 	local posts = {}
 	local i = 0
 	for fname,ix in pairs(post_list) do
@@ -288,7 +300,7 @@ function gen_posts(post_index, post_list)
 		local s2 = string.format('<span id="secondary">on %s%s</span>', meta.date, update)
 		t[#t+1] = string.format('%s %s', s1, s2)
 		t[#t+1] = '</div><div id="post">'
-		local fd = io.open(string.format('%s/%s', rc.srcdir, meta.fname))
+		local fd = io.open(string.format('%s/%s', srcdir, meta.fname))
 		t[#t+1] = discount(fd:read('*a'))
 		fd:close()
 		t[#t+1] = '</div>'
@@ -296,7 +308,7 @@ function gen_posts(post_index, post_list)
 
 		i = i+1
 		if rc.sleep_interval > 0 and i % rc.sleep_interval == 0 then
-			if rc.verbose then print(string.format("%d posts processed, sleeping for %d seconds", i, rc.sleep_duration)) end
+			if rc.verbose then printf("%d posts processed, sleeping for %d seconds", i, rc.sleep_duration) end
 			ffi.C.sleep(rc.sleep_duration)
 		end
 	end
@@ -329,17 +341,18 @@ end
 
 function assemble_pages(post_index, post_list, fragments)
 	local rc = CONF
+	local srcdir = STATE.srcdir
 	-- Generate the HTML for the preamble text, if there is a markdown file for it.
 	local preamble = false
-	if file_exists(rc.srcdir.."/preamble.md") then
-		local fd = io.open(string.format('%s/preamble.md', rc.srcdir))
+	if file_exists(srcdir.."/preamble.md") then
+		local fd = io.open(string.format('%s/preamble.md', srcdir))
 		preamble = discount(fd:read('*a'))
 		fd:close()
 	end
 	-- Generate the HTML for the footer, if there is a markdown file in the working dir.
 	local footer = false
-	if file_exists(rc.srcdir.."/footer.md") then
-		local fd = io.open(string.format('%s/footer.md', rc.srcdir))
+	if file_exists(srcdir.."/footer.md") then
+		local fd = io.open(string.format('%s/footer.md', srcdir))
 		footer = discount(fd:read('*a'))
 		fd:close()
 	end
@@ -476,7 +489,7 @@ function generate(src, dst)
 		local fpath = string.format("%s/%s.html", path, title)
 		local fd = io.open(fpath, 'w')
 		if fd then
-			if CONF.verbose then print(string.format("Writing HTML to %s", fpath)) end
+			if CONF.verbose then printf("Writing HTML to %s", fpath) end
 			fd:write(page)
 			fd:close()
 		end
@@ -485,13 +498,13 @@ function generate(src, dst)
 	-- Write CSS file
 	do
 		local fname = dst.."/style.css"
-		if CONF.verbose then print(string.format("Writing CSS to %s", fname)) end
+		if CONF.verbose then printf("Writing CSS to %s", fname) end
 		local fd = io.open(fname, 'w')
 		if fd then
 			fd:write(style_css)
 			fd:close()
 		else
-			print(string.format("ERROR: Could not write to %s", fname))
+			printf("ERROR: Could not write to %s", fname)
 		end
 	end
 
@@ -638,7 +651,7 @@ function main()
 		print( init(input[2], input[3]) )
 	else									--> lenie generate
 		-- Read runtime config from rc.lua, store it in the global table "CONF"
-		CONF.srcdir = input[2]	-- TODO function to sanitize the path (resolve ../)
+		STATE.srcdir = input[2]			-- TODO function to sanitize the path (resolve ../)
 		read_rc(CONF)
 		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
