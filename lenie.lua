@@ -11,6 +11,10 @@ ffi.cdef[[
 unsigned int sleep(unsigned int seconds);
 ]]
 
+ffi.cdef[[
+char *realpath(const char *path, char *resolved_Path);
+]]
+
 
 
 --{{{ GLOBALS
@@ -82,13 +86,16 @@ function access(fname, mode)
 end
 
 
-function abspath(p)
+function sanitize_path(p)
 	assert(type(p) == "string")
 	-- Translate relative paths to absolute paths
 	if p:sub(1,1) ~= '/' and p:sub(1,2) ~= '~/' then
 		p = string.format("%s/%s", os.getenv("PWD"), p)
 	end
-	return p
+	-- Now use realpath(3) to resolve symlinks and instances of ./ and ../
+	local buf = ffi.new("char[?]", 2048)
+	ffi.C.realpath(p, buf)
+	return ffi.string(buf)
 end
 
 function file_exists(fname)
@@ -629,7 +636,7 @@ end
 -- the specified directories are sufficient.
 function parse_input()
 	if arg[1] and arg[2] and arg[3] then
-		local cmd, path1, path2 = arg[1], abspath(arg[2]), abspath(arg[3])
+		local cmd, path1, path2 = arg[1], sanitize_path(arg[2]), sanitize_path(arg[3])
 
 		if cmd == "generate" or cmd == "gen" then
 			return { "gen", path1, path2 }
@@ -651,7 +658,7 @@ function main()
 		print( init(input[2], input[3]) )
 	else									--> lenie generate
 		-- Read runtime config from rc.lua, store it in the global table "CONF"
-		STATE.srcdir = input[2]			-- TODO function to sanitize the path (resolve ../)
+		STATE.srcdir = sanitize_path(input[2])
 		read_rc(CONF)
 		-- Generate the html code from markdown files
 		local result = generate(input[2], input[3])
